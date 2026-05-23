@@ -413,6 +413,7 @@ jobs:
         run: |
           git config --global user.name "qimgss"
           git config --global user.email "qimgss@126.com"
+
       - name: 分叉检测
         run: |
           repo="${{ github.repository }}"; json=$(curl -s "https://api.github.com/repos/$repo")
@@ -420,6 +421,27 @@ jobs:
           if [ -n "$parent" ] && [ "$parent" != "qimgss/Action-Build" ]; then
             echo "::warning title=Source Warning::您使用的内核编译地址为非官方源，可能导致运行失败或内核异常。"
           fi
+
+      - name: 拒绝检测
+        run: |
+          cat > /tmp/check_rejects.sh << 'EOF'
+          check_rejects() {
+            local SEARCH_DIR="${1:-.}"
+            REJECT_FILES=$(find "$SEARCH_DIR" -name "*.rej" 2>/dev/null)
+            if [ -z "$REJECT_FILES" ]; then
+              return 0
+            fi
+            while IFS= read -r REJ_FILE; do
+              ORIG_FILE="${REJ_FILE%.rej}"
+              ORIG_FILE="${ORIG_FILE#./}"
+              echo "::group::❌ 补丁在 ${ORIG_FILE} 出现 hunk FAILED，点击查看具体信息"
+              cat "$REJ_FILE"
+              echo "::endgroup::"
+            done <<< "$REJECT_FILES"
+          }
+          EOF
+          chmod +x /tmp/check_rejects.sh
+          echo "REJ_CHECKER=/tmp/check_rejects.sh" >> $GITHUB_ENV
 
       - name: 安装依存关系+APTC
         uses: awalsh128/cache-apt-pkgs-action@latest 
