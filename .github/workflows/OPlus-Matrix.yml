@@ -1,86 +1,35 @@
-name: Build All OnePlus Kernels
+name: 矩阵构建所有一加内核
+
+permissions:
+  contents: write
+  actions: write
+
 on:
   workflow_dispatch:
     inputs:
-      FILE:
+      BUILD_FORM:
         type: choice
-        description: "配置文件"
+        description: "内核构建方式"
         required: true
-        default: oneplus_ace2_pro_b
+        default: BAZEL
         options:
-          - oneplus_nord_n30_se_5g_v
-          - oneplus_10r_v
-          - oneplus_nord_3_v
-          - oneplus_ace_v
-          - oneplus_ace_race_v
-          - oneplus_10_pro_b
-          - oneplus_10t_v
-          - oneplus_11r_b
-          - oneplus_ace2_b
-          - oneplus_pad_lite_b
-          - oneplus_pad_lite_Canary_b
-          - oneplus_pad_mt6983_b
-          - oneplus_ace_2v_b
-          - oneplus_ace_pro_v
-          - oneplus_11_b
-          - oneplus_12r_b
-          - oneplus_ace2_pro_b
-          - oneplus_ace3_b
-          - oneplus_open_b
-          - oneplus_nord_ce4_b
-          - oneplus_12_b
-          - oneplus_pad_go_2_b
-          - oneplus_nord_ce4_lite_5g_b
-          - oneplus_turbo_6v
-          - oneplus_nord_4_b
-          - oneplus_ace_3v_b
-          - oneplus_pad_mt6897_b
-          - oneplus_13r_b
-          - oneplus_ace3_pro_b
-          - oneplus_ace5_b
-          - oneplus_pad_pro_b
-          - oneplus_pad2_b
-          - oneplus_nord_ce5_b
-          - oneplus_nord_5_b
-          - oneplus_ace5_pro_b
-          - oneplus_13_b
-          - oneplus_13t_b
-          - oneplus_13s_b
-          - oneplus_pad_2_pro_b
-          - oneplus_pad_3_b
-          - oneplus_ace5_race_b
-          - oneplus_ace5_ultra_b
-          - oneplus_ace5_ultra_bak_b
-          - oneplus_pad2_mt6991_b
-          - oneplus_ace_6
-          - oneplus_turbo_6
-          - oneplus_ace_6t
-          - oneplus_ace_6t_Canary
-          - oneplus_15r
-          - oneplus_15r_Canary
-          - oneplus_15
-          - oneplus_15_Canary
-          - oneplus_15t
-          - oneplus_15t_Canary
-          - oneplus_pad_3_pro
-          - oneplus_pad_3_pro_Canary
-          - oneplus_pad_4
-          - oneplus_pad_4_Canary
-      MANAGER_SOURCE:
+          - BAZEL
+          - MAKE
+      KERNELSU_BRANCH:
         type: choice
-        description: "管理器调用方向"
+        description: "KernelSU分支"
         required: true
-        default: MIUIX
+        default: KernelSU
         options:
-          - MIUIX
-          - MIUIX_SPOOF
-          - MD3
-          - MD3_SPOOF
+          - KernelSU
+          - KernelSU-Next
+          - Sukisu-Ultra
+          - ReSukisu
       SUSFS_CI:
         type: choice
-        description: "SUSFS模块下载调用方向"
+        description: "SUSFS模块下载方式"
         required: true
-        default: N/A
+        default: CI
         options:
           - CI
           - Release
@@ -89,7 +38,7 @@ on:
         type: choice
         description: "内核模块实现方式"
         required: true
-        default: KPM
+        default: KPN
         options:
           - KPM
           - KPN
@@ -97,28 +46,23 @@ on:
       SUSFS_META:
         type: string
         description: "回退SUSFS(输入哈希或次数或-1关闭)"
-        required: false
-        default: ""
-      DYNAMIC_REPO:
-        type: string
-        description: "动态清单仓库所有者"
         required: true
-        default: "Numbersf"
-      BUILD_TIME:
-        type: string
-        description: "自定义构建时间(输入F使用UTCT或-1关闭)"
-        required: false
-        default: "Fri Dec 12 11:37:03 UTC 2025"
+        default: "-1"
       KSU_META:
         type: string
         description: "分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)"
         required: false
-        default: "builtin/Numbersf/"
-      LZ4_UPDATE:
-        type: boolean
-        description: "是否升级LZ4到上游最新？"
+        default: "builtin/qimgss/"
+      DYNAMIC_REPO:
+        type: string
+        description: "动态清单仓库所有者"
         required: true
-        default: false
+        default: "OnePlusOSS"
+      BUILD_TIME:
+        type: string
+        description: "自定义构建时间(输入F使用当前UTC时间)"
+        required: false
+        default: "F"
       ZRAM:
         type: string
         description: "ZRAM(0关闭1开启)/算法名/大小"
@@ -126,18 +70,13 @@ on:
         default: "0/lz4kd/8589934592"
       SUFFIX:
         type: string
-        description: "自定义内核后缀(不输入使用RAND_STR或-1关闭)"
-        required: false
-        default: ""
+        description: "自定义内核后缀(不输入使用随机字符串)"
+        required: true
+        default: "build-qimgss"
       SUBLEVEL:
         description: "自定义内核等级欺骗(SUBLEVEL)"
         required: false
         default: ""
-      FAST_BUILD:
-        type: boolean
-        description: "是否启用极速构建？"
-        required: true
-        default: true
       LSM_BBG:
         type: boolean
         description: "是否启用关键分区写入保护模块(BBG)？"
@@ -156,11 +95,6 @@ on:
       UNICODE_BYPASS:
         type: boolean
         description: "是否添加Unicode不可见字码点绕过读取漏洞修复？"
-        required: true
-        default: false
-      SCHED_HMBIRD:
-        type: boolean
-        description: "是否添加风驰驱动1.0？"
         required: true
         default: false
       DROID_SPACES:
@@ -183,27 +117,71 @@ on:
         description: "是否停用空间清扫？"
         required: true
         default: false
-      BUILD_NOCACHE:
+      BUILD_NOCCACHE:
         type: boolean
-        description: "是否停用此次缓存？"
+        description: "是否停用此次Ccache？"
         required: true
         default: false
 
 jobs:
-  build:
-    name: ${{ github.event.inputs.FAST_BUILD == 'true' && ' [FAST]' || '' }}${{ contains(github.event.inputs.FILE, '_aosp') && ' [AOSP]' || '' }}${{ github.event.inputs.KPM == 'KPM' && ' [KPM]' || github.event.inputs.KPM == 'KPN' && ' [KPN]' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && ' [BBG]' || '' }}${{ github.event.inputs.SCHED_HMBIRD == 'true' && ' [HMBIRD]' || '' }}${{ github.event.inputs.DROID_SPACES == 'true' && ' [DS]' || '' }}${{ startsWith(github.event.inputs.ZRAM, '1/') && ' [ZRAM]' || '' }}${{ github.event.inputs.RE_KERNEL == 'true' && ' [REKER]' || '' }}${{ github.event.inputs.LZ4_UPDATE == 'true' && ' [LZ4UPD]' || '' }}For ${{ github.event.inputs.FILE }} ${{ github.event.inputs.SUFFIX }}
+  prepare-matrix:
     runs-on: ubuntu-latest
-    env:
-      CCACHE_COMPILERCHECK: "none"
-      CCACHE_NOHASHDIR: "true"
-      CCACHE_NOHARDLINK: "true"
-      CCACHE_IS_KERNEL_COMPILING: "true"
-      CCACHE_MAXSIZE: 5G
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Maximize Build Space
+      - name: Generate Matrix
+        id: set-matrix
+        run: |
+          DEVICES=$(grep -v '^$' .matrix/devices.txt | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          MATRIX="{\"include\":[]}"
+
+          while IFS= read -r device; do
+            SCHED="false"
+            CLEAN_DEVICE="$device"
+
+            if [[ "$device" == *"(SCHED)"* ]]; then
+              SCHED="true"
+              CLEAN_DEVICE="${device%\(SCHED\)}"
+              CLEAN_DEVICE="${CLEAN_DEVICE%"${CLEAN_DEVICE##*[![:space:]]}"}"
+            fi
+
+            MATRIX=$(echo "$MATRIX" | jq ".include += [{\"file\":\"$CLEAN_DEVICE\",\"sched_hmbird\":\"$SCHED\"}]")
+          done <<< "$DEVICES"
+
+          echo "matrix=$(echo "$MATRIX" | jq -c .)" >> $GITHUB_OUTPUT
+
+  build:
+    needs: prepare-matrix
+    strategy:
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+      fail-fast: false
+
+    name: >
+      ${{ matrix.sched_hmbird == 'true' && 'HMBIRD' || 'NORMAL' }}
+      Build ${{ matrix.file }}
+    runs-on: ubuntu-latest
+
+    env:
+      FILE: ${{ matrix.file }}
+      SCHED_HMBIRD: ${{ matrix.sched_hmbird }}
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_HARDLINK: "true"
+      CCACHE_MAXSIZE: 8G
+
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v6
+
+      - name: 调试矩阵
+        run: |
+          echo "Building FILE=${{ matrix.file }}"
+          echo "SCHED_HMBIRD=${{ matrix.sched_hmbird }}"
+
+      - name: 最大化编译空间
         if: ${{ github.event.inputs.SPACE_NOCLEAN == 'false' }}
         uses: easimon/maximize-build-space@master
         with:
@@ -214,10 +192,10 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
-      - name: Extract Manifest Info
+      - name: 提取清单信息
         id: extract_info
         env:
-          FILE: ${{ github.event.inputs.FILE }}
+          FILE: ${{ env.FILE }}
         run: |
           set -e
           cd "$GITHUB_WORKSPACE"
@@ -281,7 +259,7 @@ jobs:
           fi
           if [[ -z "$FOUND_REPO" || ! -s "$XML_PATH" ]]; then
             echo "❌ 无法在任何仓库中找到 ${FILE}.xml"
-            exit 8
+            exit 9
           fi
           echo "MANIFEST_REPO=$FOUND_REPO" >> "$GITHUB_ENV"
           echo "MANIFEST_REPO_NAME=$FOUND_REPO_NAME" >> "$GITHUB_ENV"
@@ -324,7 +302,7 @@ jobs:
           # 传递组合信息
           echo "value=${FILE_BASE}_Android${ANDROID_VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Debug Show Selected Inputs
+      - name: 调试 显示所选输入
         run: |
           echo "------------------------------"
 
@@ -332,26 +310,24 @@ jobs:
           echo "Selected CPUD: ${{ env.CPUD }}"
           echo "Selected ANDROID_VERSION: ${{ env.ANDROID_VERSION }}"
           echo "Selected BUILD_METHOD: ${{ env.BUILD_METHOD }}"
-          echo "Selected FILE: ${{ github.event.inputs.FILE }}"
-          echo "Selected MANAGER_SOURCE: ${{ github.event.inputs.MANAGER_SOURCE }}"
+          echo "Selected FILE: ${{ env.FILE }}"
+          echo "Selected KERNELSU_BRANCH: ${{ github.event.inputs.KERNELSU_BRANCH }}"
           echo "Selected SUSFS_CI: ${{ github.event.inputs.SUSFS_CI }}"
           if [ "${{ github.event.inputs.SUSFS_CI }}" != "N/A" ]; then
             echo "::warning title=SUSFS Not Required::当前管理器已自带附加模块，无需启用 SUSFS 模块，强制启用可能导致不开机。"
           fi
           echo "Selected KPM: ${{ github.event.inputs.KPM }}"
           echo "Custom SUSFS_META: ${{ github.event.inputs.SUSFS_META }}"
-          echo "Custom KSU_META: ${{ github.event.inputs.KSU_META }}"
           echo "Selected ZRAM: ${{ github.event.inputs.ZRAM }}"
           echo "Selected LSM_BBG: ${{ github.event.inputs.LSM_BBG }}"
           echo "Selected NETFILTER: ${{ github.event.inputs.NETFILTER }}"
           echo "Selected CCM: ${{ github.event.inputs.CCM }}"
           echo "Selected SUSFS_DEV: ${{ github.event.inputs.SUSFS_DEV }}"
           echo "Selected FAST_BUILD: ${{ github.event.inputs.FAST_BUILD }}"
-          echo "Selected SCHED_HMBIRD: ${{ github.event.inputs.SCHED_HMBIRD }}"
+          echo "Selected SCHED_HMBIRD: ${{ env.SCHED_HMBIRD }}"
           echo "Selected UNICODE_BYPASS: ${{ github.event.inputs.UNICODE_BYPASS }}"
           echo "Selected DROID_SPACES: ${{ github.event.inputs.DROID_SPACES }}"
           echo "Selected RE_KERNEL: ${{ github.event.inputs.RE_KERNEL }}"
-          echo "Selected LZ4_UPDATE: ${{ github.event.inputs.LZ4_UPDATE }}"
 
           BUILD_TIME="${{ github.event.inputs.BUILD_TIME }}"
           SUFFIX="${{ github.event.inputs.SUFFIX }}"
@@ -414,10 +390,10 @@ jobs:
 
           echo "------------------------------"
 
-      - name: Check Disk Space
+      - name: 检测磁盘空间
         run: df -h
 
-      - name: Create and Enable 3G Swap
+      - name: 创建并启用3G交换
         run: |
           sudo swapoff -a
           sudo fallocate -l 3G /swapfile
@@ -426,91 +402,40 @@ jobs:
           sudo swapon /swapfile
           free -h
 
-      - name: Set Cache Environment
-        if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' }}
+      - name: 设置高速缓存环境
+        if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
         run: |
-          echo "CCACHE_DIR=$HOME/.ccache_${{ github.event.inputs.FILE }}" >> $GITHUB_ENV
-          mkdir -p "$HOME/.ccache_${{ github.event.inputs.FILE }}"
-          echo "set: $HOME/.ccache_${{ github.event.inputs.FILE }}"
+          echo "CCACHE_DIR=$HOME/.ccache_${{ env.FILE }}" >> $GITHUB_ENV
+          mkdir -p "$HOME/.ccache_${{ env.FILE }}"
+          echo "set: $HOME/.ccache_${{ env.FILE }}"
 
-      - name: Configure Git
+      - name: 设置Git
         run: |
-          git config --global user.name "Numbersf"
-          git config --global user.email "263623064@qq.com"
-          mkdir kernel_workspace && cd kernel_workspace
-          git clone https://github.com/Numbersf/Action-Build.git -b SukiSU-Ultra
-
-      - name: Fork Check
+          git config --global user.name "qimgss"
+          git config --global user.email "qimgss@126.com"
+      - name: 分叉检测
         run: |
           repo="${{ github.repository }}"; json=$(curl -s "https://api.github.com/repos/$repo")
           parent=$(echo "$json" | grep -o '"full_name": *"[^"]*"' | head -n 2 | tail -n 1 | sed 's/.*"full_name": *"\([^"]*\)".*/\1/')
-          if [ -n "$parent" ] && [ "$parent" != "Numbersf/Action-Build" ]; then
+          if [ -n "$parent" ] && [ "$parent" != "qimgss/Action-Build" ]; then
             echo "::warning title=Source Warning::您使用的内核编译地址为非官方源，可能导致运行失败或内核异常。"
           fi
 
-      - name: Reject Check
-        run: |
-          cat > /tmp/check_rejects.sh << 'EOF'
-          check_rejects() {
-            local SEARCH_DIR="${1:-.}"
-            REJECT_FILES=$(find "$SEARCH_DIR" -name "*.rej" 2>/dev/null)
-            if [ -z "$REJECT_FILES" ]; then
-              return 0
-            fi
-            while IFS= read -r REJ_FILE; do
-              ORIG_FILE="${REJ_FILE%.rej}"
-              ORIG_FILE="${ORIG_FILE#./}"
-              echo "::group::❌ 补丁在 ${ORIG_FILE} 出现 hunk FAILED，点击查看具体信息"
-              cat "$REJ_FILE"
-              echo "::endgroup::"
-            done <<< "$REJECT_FILES"
-          }
-          EOF
-          chmod +x /tmp/check_rejects.sh
-          echo "REJ_CHECKER=/tmp/check_rejects.sh" >> $GITHUB_ENV
+      - name: 安装依存关系+APTC
+        uses: awalsh128/cache-apt-pkgs-action@latest 
+        with: 
+          packages: python3 git curl ccache libelf-dev build-essential flex bison libssl-dev libncurses-dev liblz4-tool zlib1g-dev libxml2-utils rsync unzip gawk dos2unix kmod libdw-dev elfutils
+          execute_install_scripts: true
 
-      - name: Restore APT Cache
-        id: apt-cache
+      - name: 恢复Ccache
+        if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
         uses: actions/cache@v5
         with:
-          path: ~/apt-cache-debs
-          key: apt-cache-${{ runner.os }}-${{ github.ref_name }}-v3
-
-      - name: Install Dependencies
-        run: |
-          mkdir -p ~/apt-cache-debs
-          if [ "${{ steps.apt-cache.outputs.cache-hit }}" != "true" ]; then
-            sudo apt-get update
-          else
-            echo "✅ APT 缓存命中，跳过 apt-get update"
-          fi
-          sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-cache-debs" python3 git curl libelf-dev build-essential flex bison libssl-dev libncurses-dev liblz4-tool zlib1g-dev libxml2-utils rsync unzip gawk dos2unix kmod libdw-dev elfutils dwarves
-          sudo rm -f ~/apt-cache-debs/lock
-          sudo rm -rf ~/apt-cache-debs/partial
-
-      - name: Install Ccache-ECS
-        run: |
-         LIB_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/lib"
-         sudo cp -f "$LIB_DIR/ccache" /usr/bin/ccache && sudo chmod +x /usr/bin/ccache
-
-      - name: Restore Ccache
-        if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' }}
-        id: restore-ccache
-        uses: actions/cache/restore@v5
-        with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.8
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ env.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.2
 
-      - name: Restore ThinLTO Cache
-        if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.FAST_BUILD == 'true' }}
-        id: restore-thinlto
-        uses: actions/cache/restore@v5
-        with:
-          path: ${{ github.workspace }}/kernel_workspace/.thinlto-cache
-          key: thinlto-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-16.8
-
-      - name: Initialize Ccache
-        if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' }}
+      - name: 初始化Ccache
+        if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
         run: |
           INIT_FLAG="${{ env.CCACHE_DIR }}/.ccache_initialized"
           if command -v ccache >/dev/null 2>&1; then
@@ -528,17 +453,17 @@ jobs:
           fi
           ccache -s
 
-      - name: Install Repo Tool
+      - name: 安装Repo工具
         run: |
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
 
-      - name: Initialize Repo and Sync
+      - name: 初始化Repo并同步
         env:
-          FILE: ${{ github.event.inputs.FILE }}
+          FILE: ${{ env.FILE }}
         run: |
-          cd kernel_workspace
+          mkdir kernel_workspace && cd kernel_workspace
           mkdir -p .repo/manifests
           cp "$GITHUB_WORKSPACE/.repo/manifests_fallback/${FILE}.xml" ".repo/manifests/${FILE}.xml"
           BASE_URL="https://github.com/${MANIFEST_REPO}/${MANIFEST_REPO_NAME}.git"
@@ -565,25 +490,24 @@ jobs:
             rm -f "$dir/android/abi_gki_protected_exports_"* 2>/dev/null || echo "No protected exports in $dir"
           done
 
-      - name: Kernel Version Handling
+      - name: 内核版本处理
         run: |
           cd kernel_workspace/kernel_platform
           # 获取内核 Android 版本号(KANDROID_VERSION)以及内核版本号(KERNEL_VERSION)
           for f in ./common/build.config.constants ./common/build.config.common; do
             if [ -f "$f" ]; then
-              KMI=$(grep -m1 '^BRANCH=' "$f" | cut -d= -f2)
-              [ -n "$KMI" ] && break
+              BRANCH=$(grep -m1 '^BRANCH=' "$f" | cut -d= -f2)
+              [ -n "$BRANCH" ] && break
             fi
           done
-          if [[ -z "$KMI" && -n "$KERNEL_REPOS" ]]; then
-            KMI=$(grep -m1 '^android' "./$KERNEL_REPOS/android/ACK_SHA" | cut -d- -f1,2)
+          if [[ -z "$BRANCH" && -n "$KERNEL_REPOS" ]]; then
+            BRANCH=$(grep -m1 '^android' "./$KERNEL_REPOS/android/ACK_SHA" | cut -d- -f1,2)
           fi
-          if [ -n "$KMI" ]; then
-            echo "KMI=$KMI" >> $GITHUB_ENV
-            echo "KANDROID_VERSION=${KMI%-*}" >> $GITHUB_ENV
-            echo "KERNEL_VERSION=${KMI#*-}" >> $GITHUB_ENV
+          if [ -n "$BRANCH" ]; then
+            echo "KANDROID_VERSION=${BRANCH%-*}" >> $GITHUB_ENV
+            echo "KERNEL_VERSION=${BRANCH#*-}" >> $GITHUB_ENV
           else
-            echo "No KMI found in build.config* and ACK_SHA files"
+            echo "No BRANCH found in build.config* and ACK_SHA files"
           fi
 
           # 从 Makefile 获取完整内核版本号(TKERNEL_VERSION)以及可选的修改内核等级
@@ -610,12 +534,13 @@ jobs:
           fi
 
           # 内核版本的数字转换(对比用)
-          echo "KV1=${KMI#*-}"       | cut -d. -f1 >> $GITHUB_ENV
-          echo "KV2=${KMI#*-}"       | tr -d '.' >> $GITHUB_ENV
+          echo "KV1=${BRANCH#*-}"       | cut -d. -f1 >> $GITHUB_ENV
+          echo "KV2=${BRANCH#*-}"       | tr -d '.' >> $GITHUB_ENV
           echo "KV3=${NEW_VERSION}"     | tr -d '.' >> $GITHUB_ENV
+          echo "KERNEL_SHORT_VERSION=$(echo $NEW_VERSION | cut -d. -f1,2)" >> $GITHUB_ENV
           echo "KERNEL_SHORT_PATCH_VERSION=$(echo $NEW_VERSION | cut -d. -f1,2 | tr '.' '_')" >> $GITHUB_ENV
 
-      - name: Rust Version Handling
+      - name: Rust版本处理
         run: |
           cd kernel_workspace/kernel_platform
           # 从 build.config.constants 读取 RUSTC_VERSION
@@ -633,11 +558,12 @@ jobs:
           fi
 
       # 自定义内核后缀
-      - name: Custom Kernel Suffix if set
-        if: ${{ github.event.inputs.SUFFIX != '' && github.event.inputs.SUFFIX != '-1' }}
+      - name: 自定义内核后缀(如果设置)
+        if: ${{ github.event.inputs.SUFFIX != '' }}
         run: |
-          cd kernel_workspace/kernel_platform
+          cd kernel_workspace
           SUFFIX="${{ github.event.inputs.SUFFIX }}"
+          KANDROID_VERSION="${{ env.KANDROID_VERSION }}"
           FAST_BUILD="${{ github.event.inputs.FAST_BUILD }}"
 
           for f in ./common/scripts/setlocalversion ./"$KERNEL_REPOS"/scripts/setlocalversion ./external/dtc/scripts/setlocalversion; do
@@ -671,11 +597,15 @@ jobs:
             chmod +x "$f"
           done
 
+          git add -A
+          git commit -m "Custom suffix & removed -dirty"
+
       # 伪官方格式的随机后缀（仅在 SUFFIX 未设置时生效）*
-      - name: Custom Kernel Random Suffix if empty
+      - name: 自定义内核随机后缀(如果为空)
         if: ${{ github.event.inputs.SUFFIX == '' }}
         run: |
-          cd kernel_workspace/kernel_platform
+          cd kernel_workspace
+          KANDROID_VERSION="${{ env.KANDROID_VERSION }}"
           FAST_BUILD="${{ github.event.inputs.FAST_BUILD }}"
 
           # 生成随机数字和随机hash
@@ -710,25 +640,28 @@ jobs:
             chmod +x "$f"
           done
 
-      - name: Resolve Manager Source
+          git add -A
+          git commit -m "Random suffix & remove -dirty"
+
+      - name: 解析KernelSU分支来源
         id: manager
         run: |
-          MANAGER_SOURCE="${{ github.event.inputs.MANAGER_SOURCE }}"
+          KERNELSU_BRANCH="${{ github.event.inputs.KERNELSU_BRANCH }}"
 
-          case "$MANAGER_SOURCE" in
-            MD3)
+          case "$KERNELSU_BRANCH" in
+            KernelSU|*)
+              BRANCH="main"
+              ARTIFACT="manager"
+              ;;
+            KernelSU-Next)
               BRANCH="old"
               ARTIFACT="manager"
               ;;
-            MD3_SPOOF)
-              BRANCH="old"
-              ARTIFACT="Spoofed-Manager"
-              ;;
-            MIUIX_SPOOF)
+            Sukisu-Ultra)
               BRANCH="main"
-              ARTIFACT="Spoofed-Manager"
+              ARTIFACT="manager"
               ;;
-            MIUIX|*)
+            ReSukisu)
               BRANCH="main"
               ARTIFACT="manager"
               ;;
@@ -737,7 +670,33 @@ jobs:
           echo "manager_branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "manager_artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
 
-      - name: Add SukiSU Ultra
+      - name: 添加KernelSU
+        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'KernelSU' }}
+        run: |
+          cd kernel_workspace/kernel_platform
+          MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/refs/heads/${MANAGER_BRANCH}/kernel/setup.sh" | bash -s main
+          cd KernelSU
+          KSU_VERSION=$(expr $(curl -sI "https://api.github.com/repos/tiann/KernelSU/commits?sha=${MANAGER_BRANCH}&per_page=1" | grep -i "link:" | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p') "+" 30000)
+          echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+          echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
+          sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Kbuild
+          
+      - name: 添加KernelSU Next
+        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'KernelSU-Next' }}
+        run: |
+          cd kernel_workspace/kernel_platform
+          MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
+          curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/refs/heads/${MANAGER_BRANCH}/kernel/setup.sh" | bash -s dev-susfs
+          cd KernelSU-Next
+          KSU_VERSION=$(expr $(curl -sI "https://api.github.com/repos/pershoot/KernelSU-Next/commits?sha=${MANAGER_BRANCH}&per_page=1" | grep -i "link:" | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p') "+" 30000)
+          echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+          sed -i "s/KSU_VERSION_FALLBACK := 1/KSU_VERSION_FALLBACK := $KSU_VERSION/g" kernel/Kbuild
+          KSU_GIT_TAG=$(curl -sL "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/tags" | grep -o '"name": *"[^"]*"' | head -n 1 | sed 's/"name": "//;s/"//')
+          sed -i "s/KSU_VERSION_TAG_FALLBACK := v0.0.1/KSU_VERSION_TAG_FALLBACK := $KSU_GIT_TAG/g" kernel/Kbuild
+
+      - name: 添加SukiSU Ultra
+        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'Sukisu-Ultra' }}
         run: |
           cd kernel_workspace/kernel_platform
           MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
@@ -817,7 +776,7 @@ jobs:
           grep -nE '^(REPO_OWNER|REPO_NAME|REPO_BRANCH|KSU_VERSION_API|KSU_VERSION_FULL|VERSION_TAG|GIT_BIN|CURL_BIN)' kernel/Makefile
           echo "::endgroup::"
 
-      - name: Apply Patches SukiSU Ultra
+      - name: 应用KernelSU补丁
         env:
           FILE: ${{ github.event.inputs.FILE }}
         run: |
@@ -844,10 +803,12 @@ jobs:
             git clone https://github.com/Numbersf/lz4_oplus.git
           fi
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
+          git clone https://github.com/qimgss/Action-Build.git
           cd kernel_platform
           if [ "${{ github.event.inputs.SUSFS_META }}" != "-1" ]; then
             echo "正在拉取susfs补丁"
             cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch ./common/
+            cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./KernelSU/
             cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
             cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
           fi
@@ -875,6 +836,7 @@ jobs:
             if grep -q 'common-modules/trusty' "$GITHUB_WORKSPACE/.repo/manifests_fallback/${FILE}.xml"; then
               TRUSTY_EXISTS="true"
             fi
+            echo "trusty_exists=$TRUSTY_EXISTS" >> $GITHUB_OUTPUT
             if [[ "$TRUSTY_EXISTS" == "false" ]]; then
               echo "修复内核版本为6.6.0~6.6.30的机型源码及清单中缺失TrustyOS导致的susfs报错"
               sed -i 's/-32,12 +32,38/-32,11 +32,37/g' 50_add_susfs_in_gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch
@@ -925,7 +887,7 @@ jobs:
                 sed -i '/#include <linux\/cpufreq_times.h>/a #include <linux\/dma-buf.h>' ./fs/proc/base.c
               fi
             fi
-            if [ "$KMI" = "android12-5.10" ] || [ "$KMI" = "android13-5.15" ]; then
+            if [ "$KMI" = "android12-5.10" ] || [ "$GKI_V" = "android13-5.15" ]; then
               if ! grep -qxF $'\tif (!vma_pages(vma))' ./fs/proc/task_mmu.c; then
                 echo "未找到 vma_pages，正在进行补丁修复"
                 fake_patched=1
@@ -950,7 +912,7 @@ jobs:
                   sed -i -e '/unsigned int nr_subpages \= __PAGE_SIZE \/ PAGE_SIZE;/d' -e '/pagemap_entry_t \*res = NULL;/d' ./fs/proc/task_mmu.c
                 fi
               fi
-              if [ "$KMI" = "android12-5.10" ] || [ "$KMI" = "android13-5.15" ] || [ "$KMI" = "android14-6.1" ]; then
+              if [ "$KMI" = "android12-5.10" ] || [ "$KMI" = "android13-5.15" ] || [ "$GKI_V" = "android14-6.1" ]; then
                 if grep -q 'goto[[:space:]]\+show_pad;' ./fs/proc/task_mmu.c; then
                   sed -i -e 's/goto show_pad;/return 0;/' ./fs/proc/task_mmu.c
                 fi
@@ -1019,7 +981,7 @@ jobs:
           source $REJ_CHECKER
           check_rejects .
 
-      - name: Apply RE_KERNEL
+      - name: 应用 ReKernel
         if: ${{ github.event.inputs.RE_KERNEL == 'true' }}
         run: |
           RE_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Re-Kernel/LKM-Source"
@@ -1030,9 +992,7 @@ jobs:
           cp ${RE_DIR}/rekernel.c ${RE_DIR}/rekernel.h ${RE_DIR}/Makefile ${RE_DIR}/Kconfig drivers/rekernel/
           sed -i "s|^\s*//\s*#define KERNEL_${KERNEL_SHORT_PATCH_VERSION}|\#define KERNEL_${KERNEL_SHORT_PATCH_VERSION}|" drivers/rekernel/rekernel.h
 
-      - name: Apply DROID_SPACES
-        env:
-          FILE: ${{ github.event.inputs.FILE }}
+      - name: 启用轻量级Linux容器
         if: ${{ github.event.inputs.DROID_SPACES == 'true' }}
         run: |
           PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches"
@@ -1080,7 +1040,7 @@ jobs:
           source $REJ_CHECKER
           check_rejects .
 
-      - name: Apply LZ4_DEV
+      - name: 应用 LZ4_DEV
         if: ${{ github.event.inputs.LZ4_UPDATE == 'true' }}
         run: |
           set -euo pipefail
@@ -1088,7 +1048,7 @@ jobs:
           cd kernel_workspace/kernel_platform/common
           . "${LZ4_REPO}/apply_lz4_oplus.sh"
 
-      - name: Apply ZRAM
+      - name: 应用 ZRAM
         if: startsWith(github.event.inputs.ZRAM, '1/')
         run: |
           ZRAM="${{ github.event.inputs.ZRAM }}"
@@ -1116,7 +1076,7 @@ jobs:
           source $REJ_CHECKER
           check_rejects .
 
-      - name: Apply SCHED_HMBIRD
+      - name: 启用风驰内核
         env:
           FILE: ${{ github.event.inputs.FILE }}
         if: ${{ github.event.inputs.SCHED_HMBIRD == 'true' }}
@@ -1153,7 +1113,7 @@ jobs:
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' ./security/Kconfig
 
       # 配置信息，带*为附加项目，具有一定危险性和不确定性
-      - name: Add Configuration Settings
+      - name: 添加配置设置
         run: |
           cd kernel_workspace/kernel_platform/common
           CONFIG_FILE=./arch/arm64/configs/gki_defconfig
@@ -1165,7 +1125,7 @@ jobs:
             echo "$1" >> "$CONFIG_FILE"
           }
 
-          # SukiSU Ultra配置
+          # KSU配置
           set_config "CONFIG_KSU=y"
 
           # KPM配置
@@ -1283,7 +1243,7 @@ jobs:
           # 移除构建审查
           sed -i 's/check_defconfig//' ./build.config.gki
 
-      - name: Fix IPv6_NAT Error
+      - name: 添加IPv6_NAT错误
         if: ${{ github.event.inputs.NETFILTER == 'true' }}
         run: |
           PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches"
@@ -1296,7 +1256,7 @@ jobs:
           fi
 
       # Custom kernel build time, without adding #1 SMP PREEMPT 自定义内核构建时间，不要加入#1 SMP PREEMPT
-      - name: Custom BUILD_TIME
+      - name: 自定义编译时间
         if: ${{ github.event.inputs.BUILD_TIME != '-1' }}
         shell: bash
         run: |
@@ -1322,14 +1282,14 @@ jobs:
             fi
           done
 
-      - name: Disable GPUEB
+      - name: 关闭GPUEB
         if: ${{ env.KERNEL_VERSION == '5.10' && startsWith(env.CPU, 'mt') }}
         run: |
           echo "Disabling GPUEB for MTK kernel 5.10"
           sed -i '/obj-y.*gpueb/d' kernel_workspace/kernel-5.10/drivers/gpu/mediatek/Makefile
 
-      - name: Build Kernel FAST
-        if: ${{ github.event.inputs.FAST_BUILD == 'true' }}
+      - name: 快速构建内核
+        if: ${{ github.event.inputs.BUILD_FORM == 'MAKE' }}
         id: fast_build
         run: |
           KERNEL_VERSION="${{ env.KERNEL_VERSION }}"
@@ -1525,8 +1485,8 @@ jobs:
           make -j"$(nproc --all)" O=out "${MAKE_ARGS[@]}"
           ccache -s
 
-      - name: Fallback to Build Kernel
-        if: ${{ github.event.inputs.FAST_BUILD == 'false' || steps.fast_build.outputs.fallback == 'true' }}
+      - name: 使用官方脚本编译
+        if: ${{ github.event.inputs.BUILD_FORM == 'BAZEL' || steps.fast_build.outputs.fallback == 'true' }}
         run: |
           cd kernel_workspace
           if [ -f ./kernel_platform/build_with_bazel.py ]; then
@@ -1537,9 +1497,9 @@ jobs:
             ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ env.CPUD }} ${{ env.BUILD_METHOD }}
           fi
 
-      - name: Make AnyKernel3
+      - name: 制作AnyKernel3
         run: |
-          git clone https://github.com/Numbersf/AnyKernel3 --depth=1
+          git clone https://github.com/qimgss/AnyKernel3 --depth=1
           rm -rf ./AnyKernel3/.git
           mkdir -p kernel_workspace/kernel_platform/out/Final-Image-Find/
           image_path=""
@@ -1556,6 +1516,12 @@ jobs:
             fi
           fi
           if [ -z "$image_path" ]; then
+            image_path=$(find "./kernel_workspace" -type f -name "Image" 2>/dev/null | head -n 1)
+            if [ -n "$image_path" ]; then
+              echo "✅ 通过全局搜索，成功找到 Image 文件: $image_path"
+            fi
+          fi
+          if [ -z "$image_path" ]; then
             echo "❌ 未找到 Image 文件，构建失败" >&2
             exit 1
           fi
@@ -1565,7 +1531,7 @@ jobs:
             cp "$image_path" kernel_workspace/kernel_platform/out/Final-Image-Find/Image
           fi
 
-      - name: Apply KPX and Replace Image
+      - name: 应用KPX并替换镜像
         if: ${{ github.event.inputs.KPM != 'N/A' }}
         run: |
           KPM_DIR="${GITHUB_WORKSPACE}/kernel_workspace/SukiSU_patch/kpm"
@@ -1585,7 +1551,7 @@ jobs:
           mv -f oImage Image
           cp Image "${GITHUB_WORKSPACE}/AnyKernel3/Image"
 
-      - name: Download Latest SUSFS Module from CI
+      - name: 从CI下载最新版 SUSFS 模块
         if: ${{ github.event.inputs.SUSFS_CI == 'CI' && github.event.inputs.SUSFS_META != '-1' }}
         continue-on-error: true
         run: |
@@ -1605,14 +1571,14 @@ jobs:
             fi
           fi
 
-      - name: Download Latest SUSFS Module from Release
+      - name: 从Releases下载最新版 SUSFS 模块
         if: ${{ github.event.inputs.SUSFS_CI == 'Release' && github.event.inputs.SUSFS_META != '-1' }}
         continue-on-error: true
         run: |
           wget -O ksu_module_susfs_1.5.2+_Release.zip https://github.com/sidex15/ksu_module_susfs/releases/latest/download/ksu_module_susfs_1.5.2+.zip
           cp ksu_module_susfs_1.5.2+_Release.zip ./AnyKernel3/
 
-      - name: Download Latest SukiSU-Ultra APK from CI
+      - name: 从CI下载最新版 KernelSU APK
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1639,18 +1605,25 @@ jobs:
           curl -fL -H "Authorization: token $GITHUB_TOKEN" -o "${MANAGER_ARTIFACT}.zip" "$artifact_url"
           unzip -j "${MANAGER_ARTIFACT}.zip" "*.apk" -d ./AnyKernel3/
 
-      - name: Set zip Suffix
+      - name: 设置zip后缀
         id: suffix
         run: |
-          echo "value=${{ env.ZRAM_ALGO_U && format('_{0}', env.ZRAM_ALGO_U) || '' }}${{ github.event.inputs.KPM == 'KPM' && '_KPM' || github.event.inputs.KPM == 'KPN' && '_KPN' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && '_BBG' || '' }}_ILH${{ github.event.inputs.SCHED_HMBIRD== 'true' && '_HMBIRD' || '' }}${{ github.event.inputs.DROID_SPACES== 'true' && '_DS' || '' }}${{ github.event.inputs.RE_KERNEL == 'true' && '_REKER' || '' }}${{ github.event.inputs.LZ4_UPDATE == 'true' && '_LZ4UPD' || '' }}" >> $GITHUB_OUTPUT
+          echo "value=${{ env.ZRAM_ALGO_U && format('_{0}', env.ZRAM_ALGO_U) || '' }}${{ github.event.inputs.KPM == 'KPM' && '_KPM' || github.event.inputs.KPM == 'KPN' && '_KPN' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && '_BBG' || '' }}_ILH${{ env.SCHED_HMBIRD== 'true' && '_HMBIRD' || '' }}${{ github.event.inputs.DROID_SPACES== 'true' && '_DS' || '' }}${{ github.event.inputs.RE_KERNEL == 'true' && '_REKER' || '' }}" >> $GITHUB_OUTPUT
+      
+      - name: 压缩 AnyKernel3
+        id: compress
+        run: |
+          AK3_ZIP_NAME="AnyKernel3_KernelSU_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}.zip"
+          echo "ak3name=$AK3_ZIP_NAME" >> $GITHUB_OUTPUT
+          zip -r "$AK3_ZIP_NAME" ./AnyKernel3
 
-      - name: Upload AnyKernel3
+      - name: 上传 AnyKernel3
         uses: actions/upload-artifact@v7
         with:
-          name: AnyKernel3_SukiSUUltra_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
-          path: ./AnyKernel3/*
+          name: AnyKernel3_KernelSU_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
+          path: ${{ steps.compress.outputs.ak3name }}
 
-      - name: Extract and Process ZRAM Module
+      - name: 提取和处理 ZRAM 模块
         if: startsWith(github.event.inputs.ZRAM, '1/')
         id: zram_find
         run: |
@@ -1703,14 +1676,17 @@ jobs:
             exit 0
           fi
 
-      - name: Upload ZRAM Module
+      - name: 上传 ZRAM 模块
         if: startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         uses: actions/upload-artifact@v7
         with:
           name: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
           path: ZRAM-Module/*
 
-      - name: Check Cache Size Before Save
+      - name: 生成后磁盘检查
+        run: df -h
+
+      - name: 保存前检查缓存大小
         if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' }}
         id: cache_size_check
         run: |
@@ -1733,19 +1709,156 @@ jobs:
           check_size "${{ env.CCACHE_DIR }}" "ccache"
           check_size "${{ github.workspace }}/kernel_workspace/.thinlto-cache" "thinlto"
 
-      - name: Save Ccache
+      - name: 保存Ccache
         if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' && steps.cache_size_check.outputs.ccache_save == 'true' && steps.restore-ccache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v5
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.8
 
-      - name: Save ThinLTO Cache
+      - name: 保存 ThinLTO 缓存
         if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.FAST_BUILD == 'true' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v5
         with:
           path: ${{ github.workspace }}/kernel_workspace/.thinlto-cache
           key: thinlto-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-16.8
 
-      - name: Post-build Disk Check
+      - name: 构建后磁盘检查
         run: df -h
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: 下载所有构建产物
+        uses: actions/download-artifact@v4
+        with:
+          # 下载所有构件，它们将存放在以构件名命名的文件夹中
+          path: ${{ runner.temp }}/artifacts
+
+      - name: 生成 Release 标签和标题
+        id: tag_info
+        run: |
+          # 使用内核版本和当前时间生成一个唯一的标签，例如 “build-20240507-120305”
+          BUILD_TAG="build-$(date -u +'%Y%m%d-%H%M%S')"
+          echo "RELEASE_TAG=$BUILD_TAG" >> $GITHUB_OUTPUT
+          # Release 标题可以更友好一些
+          echo "RELEASE_TITLE=内核构建 $BUILD_TAG" >> $GITHUB_OUTPUT
+
+      - name: 生成Release描述
+        env:
+          KERNELSU_BRANCH: ${{ github.event.inputs.KERNELSU_BRANCH }}
+          SUSFS_CI: ${{ github.event.inputs.SUSFS_CI }}
+          KPM: ${{ github.event.inputs.KPM }}
+          SUSFS_META: ${{ github.event.inputs.SUSFS_META }}
+          ZRAM: ${{ github.event.inputs.ZRAM }}
+          SUFFIX: ${{ github.event.inputs.SUFFIX }}
+          SUBLEVEL: ${{ github.event.inputs.SUBLEVEL }}
+          FAST_BUILD: ${{ github.event.inputs.FAST_BUILD }}
+          LSM_BBG: ${{ github.event.inputs.LSM_BBG }}
+          NETFILTER: ${{ github.event.inputs.NETFILTER }}
+          CCM: ${{ github.event.inputs.CCM }}
+          UNICODE_BYPASS: ${{ github.event.inputs.UNICODE_BYPASS }}
+          DROID_SPACES: ${{ github.event.inputs.DROID_SPACES }}
+          RE_KERNEL: ${{ github.event.inputs.RE_KERNEL }}
+          SUSFS_DEV: ${{ github.event.inputs.SUSFS_DEV }}
+          SPACE_NOCLEAN: ${{ github.event.inputs.SPACE_NOCLEAN }}
+          BUILD_NOCCACHE: ${{ github.event.inputs.BUILD_NOCCACHE }}
+        run: |
+          echo "生成Release描述..."
+
+          # 处理ZRAM参数
+          ZRAM_STATUS="0关1开"
+          ZRAM_SWSTA=$(echo "${{ github.event.inputs.ZRAM }}" | cut -d'/' -f1)
+          if [[ "$ZRAM_SWSTA" == "1" ]]; then
+            ZRAM_ENABLED="✅"
+            ZRAM_ALGO=$(echo "${{ github.event.inputs.ZRAM }}" | cut -d'/' -f2)
+            ZRAM_SIZE=$(echo "${{ github.event.inputs.ZRAM }}" | cut -d'/' -f3)
+            ZRAM_INFO="算法: $ZRAM_ALGO, 大小: $ZRAM_SIZE"
+          else
+            ZRAM_ENABLED="❌"
+            ZRAM_INFO=""
+          fi
+
+          # 处理SUSFS_META参数
+          if [[ "${{ github.event.inputs.SUSFS_META }}" == "-1" ]]; then
+            SUSFS_ENABLED="❌"
+            SUSFS_INFO="已关闭"
+          elif [[ -n "${{ github.event.inputs.SUSFS_META }}" ]]; then
+            SUSFS_ENABLED="✅"
+            SUSFS_INFO="回退版本: ${{ github.event.inputs.SUSFS_META }}"
+          else
+            SUSFS_ENABLED="✅"
+            SUSFS_INFO="最新版本"
+          fi
+
+          # 使用EOF正确格式生成Markdown描述
+          cat > release_body.md << 'EOF'
+          # 内核构建配置详情
+
+          ## 构建信息
+          - **Android 版本**: `${{ needs.build.outputs.ANDROID_VERSION }}`
+          - **内核版本**: `${{ needs.build.outputs.TKERNEL_VERSION }}`
+          - **KernelSU 版本**: `${{ needs.build.outputs.KSUVER }}`
+          - **构建时间**: `${{ env.KBUILD_BUILD_TIMESTAMP }}`
+          - **自定义后缀**: `${{ github.event.inputs.SUFFIX }}`
+          - **内核等级欺骗**: `${{ github.event.inputs.SUBLEVEL }}`
+          
+          ## 功能开关状态
+          | 功能 | 状态 | 说明 |
+          |------|------|------|
+          | KernelSU分支 | `${{ github.event.inputs.KERNELSU_BRANCH }}` |  |
+          | 内核模块实现 | `${{ github.event.inputs.KPM }}` |  |
+          | ZRAM | $ZRAM_ENABLED | $ZRAM_INFO |
+          | 关键分区写入保护 | ${{ github.event.inputs.LSM_BBG == 'true' && '✅' || '❌' }} |  |
+          | 网络功能拓展 | ${{ github.event.inputs.NETFILTER == 'true' && '✅' || '❌' }} |  |
+          | 网络拥塞控制 | ${{ github.event.inputs.CCM == 'true' && '✅' || '❌' }} |  |
+          | Unicode绕过修复 | ${{ github.event.inputs.UNICODE_BYPASS == 'true' && '✅' || '❌' }} |  |
+          | 轻量级Linux容器 | ${{ github.event.inputs.DROID_SPACES == 'true' && '✅' || '❌' }} |  |
+          | Re-Kernel | ${{ github.event.inputs.RE_KERNEL == 'true' && '✅' || '❌' }} |  |
+          | SUSFS-DEV分支 | ${{ github.event.inputs.SUSFS_DEV == 'true' && '✅' || '❌' }} |  |
+          | 停用空间清扫 | ${{ github.event.inputs.SPACE_NOCLEAN == 'true' && '✅' || '❌' }} |  |
+          | 停用Ccache | ${{ github.event.inputs.BUILD_NOCCACHE == 'true' && '✅' || '❌' }} |  |
+          | 风驰内核调度 | ${{ env.SCHED_HMBIRD == 'true' && '✅' || '❌' }} |  |
+          
+          > 构建时间: `$(date '+%Y-%m-%d %H:%M:%S %Z')`
+          > 工作流运行: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
+
+
+      - name: 创建 GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag_info.outputs.RELEASE_TAG }}
+          name: ${{ steps.tag_info.outputs.RELEASE_TITLE }}
+          body_path: ./release_body.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 上传构件到 Release
+        run: |
+          # 遍历下载的构件目录，上传所有文件
+          for artifact_dir in ${{ runner.temp }}/artifacts/*/; do
+            if [ -d "$artifact_dir" ]; then
+              echo "正在上传目录: $artifact_dir"
+              for file in "$artifact_dir"/*; do
+                if [ -f "$file" ]; then
+                  echo "上传文件: $file"
+                  gh release upload ${{ steps.tag_info.outputs.RELEASE_TAG }} "$file" --clobber
+                fi
+              done
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+       

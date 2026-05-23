@@ -9,10 +9,9 @@ on:
         required: true
         default: 'Build All OnePlus Kernels'
         options:
-          - Build All OnePlus Kernels
+          - 编译任意一加内核
+          - 矩阵构建所有一加内核
           - CAll Build Start UP
-          - Build TEST
-          - Build TEST2
       cache_mode:
         type: choice
         description: '缓存清理类型'
