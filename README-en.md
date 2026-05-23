@@ -1,6 +1,8 @@
 **`Enlish`** | [简体中文](README.md)
  
-[![Workflow Status](https://img.shields.io/github/actions/workflow/status/Numbersf/Action-Build/Build%20Kernel%20OnePlus.yml?branch=SukiSU-Ultra&label=Build&logo=github-actions&style=flat-square)](https://github.com/Numbersf/Action-Build/actions/workflows/Build%20Kernel%20OnePlus.yml?query=branch%3ASukiSU-Ultra)
+[![Single Build Status](https://img.shields.io/github/actions/workflow/status/qimgss/Action-Build/OPlus-Build.yml?branch=main&label=Build&logo=github-actions&style=flat-square)](https://github.com/qimgss/Action-Build/actions/workflows/OPlus-Build.yml)
+
+[![Matrix Build Status](https://img.shields.io/github/actions/workflow/status/qimgss/Action-Build/OPlus-Matrix.yml?branch=main&label=Build&logo=github-actions&style=flat-square)](https://github.com/qimgss/Action-Build/actions/workflows/OPlus-Matrix.yml)
  
 [![Kernel Manifest](https://img.shields.io/badge/Kernel%20Manifest-EB0029?logo=oneplus&logoColor=white&style=flat-square)](https://github.com/OnePlusOSS/kernel_manifest) [![Dynamic Kernel Manifest](https://img.shields.io/badge/Dynamic%20Kernel%20Manifest-EB0029?logo=oneplus&logoColor=white&style=flat-square)](https://github.com/Numbersf/kernel_manifest) [![Kernel Manifest Appendix](https://img.shields.io/badge/Kernel%20Manifest%20Appendix-EB0029?logo=oneplus&logoColor=white&style=flat-square)](https://github.com/Numbersf/Kernel_Manifest_Appendix) [![Fengchi Kernel](https://img.shields.io/badge/Fengchi%20Kernel-EB0029?logo=github&logoColor=white&style=flat-square)](https://github.com/Numbersf/SCHED_PATCH)
  
