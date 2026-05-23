@@ -82,16 +82,6 @@ on:
           - oneplus_15t_Canary
           - oneus_pad_3_pro
           - oneplus_pad_3_pro_Canary
-      KERNELSU_BRANCH:
-        type: choice
-        description: "KernelSU分支"
-        required: true
-        default: KernelSU
-        options:
-          - KernelSU
-          - KernelSU-Next
-          - Sukisu-Ultra
-          - ReSukisu
       SUSFS_CI:
         type: choice
         description: "SUSFS模块下载方式"
