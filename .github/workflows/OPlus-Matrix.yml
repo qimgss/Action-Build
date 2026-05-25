@@ -11,7 +11,7 @@ on:
         type: choice
         description: "内核构建方式"
         required: true
-        default: BAZEL
+        default: MAKE
         options:
           - BAZEL
           - MAKE
