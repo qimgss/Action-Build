@@ -24,3 +24,4 @@
           oneplus_15t_Canary
           oneus_pad_3_pro(SCHED)
           oneplus_pad_3_pro_Canary(SCHED)
+          oneplus_pad_4

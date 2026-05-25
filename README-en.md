@@ -91,14 +91,16 @@ Prohibit the promotion of forked repositories with **no modifications**; see [LI
  
 # Features in Development
 - [ ] Kexec Kernel Hot Swap Support
-- [ ] LZ4 automatic upgrade following upstream,[#178](https://github.com/Numbersf/Action-Build/pull/178)
 - [ ] Full support for all kernel versions of Fengchi
 - Toothpaste should be squeezed bit by bit, GPUs should be cut slice by slice, PPTs should be shown slide by slide, and code should be written line by line — more features and optimizations... stay tuned!
  
 # Changelog
 > Minor updates will be ignored. For more details, please refer to the commit.
+- Added path recursion and fully adapted the Rust build logic and `bindgen / Kleaf` dependencies for kernel version `6.12+`; it can now be used normally.  
  
-- Full support for `DroidSpaces`+`ntsync`.  
+- `lz4`now automatically follows upstream upgrades and includes automatic error correction.  
+ 
+- Full support for `DroidSpaces`+`Ntsync`.  
  
 - Full support for `Re:Kernel`, automatically following upstream changes.  
  

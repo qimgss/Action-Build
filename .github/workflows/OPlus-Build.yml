@@ -81,6 +81,7 @@ on:
           - oneplus_15t_Canary
           - oneus_pad_3_pro
           - oneplus_pad_3_pro_Canary
+          - oneplus_pad_4
       SUSFS_CI:
         type: choice
         description: "SUSFS模块下载方式"
