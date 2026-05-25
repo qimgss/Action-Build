@@ -1048,6 +1048,18 @@ jobs:
 
           echo "为 oplus_bsp_midas 模块返回幽灵任务以避免空指针崩溃..."
           patch -p1 --forward < "${PATCH_DIR}/ghost-task-for-midas.patch" || true
+
+          if [ "$KMI" = "android16-6.12" ]; then
+            rm -f include/uapi/linux/ntsync.h
+            rm -f drivers/misc/ntsync.c
+            echo "补全 IPC NS 符号导出..."
+            if ! grep -q 'EXPORT_SYMBOL.*put_ipc_ns' ./ipc/namespace.c; then
+              echo -e '\nEXPORT_SYMBOL_GPL(put_ipc_ns);' >> ./ipc/namespace.c
+            fi
+            if ! grep -q 'EXPORT_SYMBOL.*init_ipc_ns' ./ipc/msgutil.c; then
+              echo -e '\nEXPORT_SYMBOL_GPL(init_ipc_ns);' >> ./ipc/msgutil.c
+            fi
+          fi
           echo "拓展 ntsync 支持..."
           if [ "$KMI" = "android16-6.12" ]; then
             rm -f include/uapi/linux/ntsync.h
