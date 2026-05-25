@@ -1322,7 +1322,7 @@ jobs:
           echo "Disabling GPUEB for MTK kernel 5.10"
           sed -i '/obj-y.*gpueb/d' kernel_workspace/kernel-5.10/drivers/gpu/mediatek/Makefile
 
-      - name: 快速构建内核
+      - name: 使用 Make 构建内核
         if: ${{ github.event.inputs.BUILD_FORM == 'MAKE' }}
         id: fast_build
         run: |
@@ -1397,7 +1397,16 @@ jobs:
           set -u
 
           export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/$CLANG_PREBUILT_BIN:$PATH"
-          export LIBCLANG_PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/clang-${CLANG_VERSION}/lib"
+          CLANG_LIB_PATH="${CLANG_PREBUILT_BIN%/bin}"
+          if [[ -d "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/$CLANG_LIB_PATH/lib" ]]; then
+            export LIBCLANG_PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/$CLANG_LIB_PATH/lib"
+          elif [[ -d "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/clang-${CLANG_VERSION}/lib" ]]; then
+            export LIBCLANG_PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/clang-${CLANG_VERSION}/lib"
+          else
+            export LIBCLANG_PATH="$(clang --print-resource-dir 2>/dev/null | sed 's|/lib/clang/.*||')/lib" 
+            echo "⚠️ LIBCLANG_PATH fallback to system: $LIBCLANG_PATH"
+          fi
+          echo "✅ LIBCLANG_PATH=$LIBCLANG_PATH"
           export PATH="/usr/lib/ccache:$PATH"
 
           # BINDGEN 检测与 fallback
@@ -1441,6 +1450,7 @@ jobs:
             fi
             if [ -x "$RUSTC_BIN" ]; then
               echo "✅ rustc exists: $RUSTC_BIN"
+              export RUSTC="$RUSTC_BIN"
             else
               echo "❌ rustc 完全缺失且 ENABLE_RUST=true，终止构建"
               exit 13
@@ -1461,6 +1471,12 @@ jobs:
             echo "✅ ld-wrapper 已创建: $LD_WRAPPER (lld=$LLD_BIN, cache=$LDCACHE_DIR)"
           fi
 
+          REAL_CLANG_BIN="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/$CLANG_PREBUILT_BIN/clang"
+          CC_WRAPPER="$GITHUB_WORKSPACE/kernel_workspace/cc-wrapper"
+          printf '#!/bin/bash\nexec ccache "%s" "$@"\n' "$REAL_CLANG_BIN" > "$CC_WRAPPER"
+          chmod +x "$CC_WRAPPER"
+          echo "✅ cc-wrapper 已创建: $CC_WRAPPER (clang=$REAL_CLANG_BIN)"
+
           cd ./common
 
           # 重映射物理路径
@@ -1474,12 +1490,16 @@ jobs:
           # KCFLAGS
           KCFLAGS="$MAP $MPMAP $FPMAP -no-canonical-prefixes -Wno-error -D__ANDROID_COMMON_KERNEL__"
 
+          # KCFLAGS
+          KCFLAGS="$MAP $FPMAP -no-canonical-prefixes -O2 -pipe -Wno-error -fno-stack-protector -D__ANDROID_COMMON_KERNEL__"
+          KCPPFLAGS="$MPMAP"
+
           MAKE_ARGS=(
             LLVM=1
             ARCH=arm64
             CROSS_COMPILE=aarch64-linux-gnu-
-            CC="ccache clang"
-            HOSTCC="ccache clang"
+            CC="$CC_WRAPPER"
+            HOSTCC="$CC_WRAPPER"
             HOSTLD=ld.lld
             PAHOLE="$PAHOLE_BIN"
             KCFLAGS="$KCFLAGS"
@@ -1495,6 +1515,7 @@ jobs:
           fi
           if [[ "$ENABLE_RUST" == "true" ]]; then
             MAKE_ARGS+=(RUSTC="$RUSTC_BIN")
+            MAKE_ARGS+=(BINDGEN="$BINDGEN_BIN")
           fi
 
           make O=out "${MAKE_ARGS[@]}" gki_defconfig --no-print-directory
@@ -1507,19 +1528,11 @@ jobs:
             scripts/config --file out/.config -d LTO_CLANG_FULL
           fi
 
-          if [[ "$KERNEL_VERSION" == "6.12" ]]; then
-            echo "# 设置 LTO = none"
-            scripts/config --file out/.config -e LTO_CLANG
-            scripts/config --file out/.config -e LTO_CLANG_NONE
-            scripts/config --file out/.config -d LTO_CLANG_THIN
-            scripts/config --file out/.config -d LTO_CLANG_FULL
-          fi
-
           make O=out "${MAKE_ARGS[@]}" olddefconfig --no-print-directory
           make -j"$(nproc --all)" O=out "${MAKE_ARGS[@]}"
           ccache -s
 
-      - name: 使用官方脚本编译
+      - name: 使用 Bazel 编译
         if: ${{ github.event.inputs.BUILD_FORM == 'BAZEL' || steps.fast_build.outputs.fallback == 'true' }}
         run: |
           cd kernel_workspace
