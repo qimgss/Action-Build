@@ -25,6 +25,16 @@ on:
           - KernelSU-Next
           - Sukisu-Ultra
           - ReSukisu
+
+      RELEASE_TYPE:
+        type: choice
+        description: "Release发布形式"
+        required: true
+        default: Release
+        options:
+          - Release
+          - Pre-Release
+          - None
       SUSFS_CI:
         type: choice
         description: "SUSFS模块下载方式"
@@ -512,6 +522,11 @@ jobs:
             rm -f "$dir/android/abi_gki_protected_exports_"* 2>/dev/null || echo "No protected exports in $dir"
           done
 
+          if grep -q 'check_defconfig = None,' kernel_platform/build/kernel/kleaf/common_kernels.bzl; then
+            sed -i 's/check_defconfig = None,/check_defconfig = "disabled",/' kernel_platform/build/kernel/kleaf/common_kernels.bzl
+            sed -i 's/if check_defconfig == None:/if False:  # check_defconfig == None:/' kernel_platform/build/kernel/kleaf/common_kernels.bzl
+          fi
+
       - name: 内核版本处理
         run: |
           cd kernel_workspace/kernel_platform
@@ -972,8 +987,8 @@ jobs:
           check_rejects .
 
       # OGKI转换GKI，无需修改 dtbo 开机
-      - name: Apply Convert HMBIRD_OGKI to HMBIRD_GKI
-        if: ${{ fromJSON(env.KV1) >= 6 && fromJSON(env.KV2) >= 66 && github.event.inputs.SCHED_HMBIRD == 'false' }}
+      - name: 将 HMBIRD_OGKI 转换为 HMBIRD_GKI
+        if: ${{ fromJSON(env.KV1) >= 6 && fromJSON(env.KV2) >= 66 && env.SCHED_HMBIRD == 'false' }}
         run: |
           PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches"
           cd kernel_workspace/kernel_platform/common
@@ -990,7 +1005,7 @@ jobs:
           source $REJ_CHECKER
           check_rejects .
 
-      - name: Apply UNICODE_BYPASS
+      - name: 启用不可见字码点修复
         if: ${{ github.event.inputs.UNICODE_BYPASS == 'true' }}
         run: |
           PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches"
@@ -1113,7 +1128,7 @@ jobs:
       - name: 启用风驰内核
         env:
           FILE: ${{ github.event.inputs.FILE }}
-        if: ${{ github.event.inputs.SCHED_HMBIRD == 'true' }}
+        if: ${{ env.SCHED_HMBIRD == 'true' }}
         run: |
           cd kernel_workspace/kernel_platform/common
           CLEAN_FILE="${FILE//_bak/}"
@@ -1138,7 +1153,7 @@ jobs:
             exit 12
           fi
 
-      - name: Apply LSM_BBG
+      - name: 添加 LSM_BBG
         if: ${{ github.event.inputs.LSM_BBG == 'true' }}
         run: |
           cd kernel_workspace/kernel_platform/common
@@ -1154,9 +1169,16 @@ jobs:
           KERNEL_VERSION="${{ env.KERNEL_VERSION }}"
 
           set_config() {
-            local key="${1%%=*}"
-            sed -i "/^${key}=/d" "$CONFIG_FILE"
-            echo "$1" >> "$CONFIG_FILE"
+            local val="$1"
+            local key="${val%%=*}"
+            if grep -qF "${key}=" "$CONFIG_FILE" || grep -qF "# ${key} is not set" "$CONFIG_FILE"; then
+              VAL="$val" awk -v key="$key" '
+                $0 == "# " key " is not set" || index($0, key "=") == 1 { print ENVIRON["VAL"]; next }
+                { print }
+              ' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE" || rm -f "${CONFIG_FILE}.tmp"
+            else
+              printf '%s\n' "$val" >> "$CONFIG_FILE"
+            fi
           }
 
           # KSU配置
@@ -1730,9 +1752,6 @@ jobs:
           name: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
           path: ZRAM-Module/*
 
-      - name: 生成后磁盘检查
-        run: df -h
-
       - name: 保存前检查缓存大小
         if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' }}
         id: cache_size_check
@@ -1776,7 +1795,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && github.event.inputs.RELEASE_TYPE != 'None' }}
     steps:
       - name: 检出仓库代码
         uses: actions/checkout@v6
@@ -1878,6 +1897,16 @@ jobs:
           > 工作流运行: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           EOF
 
+      - name: 处理 Release 形式
+        id: release_type
+        run: |
+          if [ "${{ github.event.inputs.RELEASE_TYPE }}" = "Release" ]; then
+            echo "PRE_RELEASE=false" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.RELEASE_TYPE }}" = "Pre-Release" ]; then
+            echo "PRE_RELEASE=true" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Pre-Release: $prerelease"
 
       - name: 创建 GitHub Release
         id: create_release
@@ -1887,7 +1916,7 @@ jobs:
           name: ${{ steps.tag_info.outputs.RELEASE_TITLE }}
           body_path: ./release_body.md
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.release_type.outputs.PRE_RELEASE }}
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
