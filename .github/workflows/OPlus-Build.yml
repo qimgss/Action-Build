@@ -973,8 +973,12 @@ jobs:
             fi
           fi
 
-          source $REJ_CHECKER
-          check_rejects .
+          if [ -f "$REJ_CHECKER" ]; then
+            source "$REJ_CHECKER"
+            check_rejects .
+          else
+            echo "::warning::Skipping check_rejects (rej_checker not found)"
+          fi
 
       # OGKI转换GKI，无需修改 dtbo 开机
       - name: 将 HMBIRD_OGKI 转换为 HMBIRD_GKI
