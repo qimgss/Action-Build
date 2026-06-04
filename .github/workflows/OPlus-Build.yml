@@ -1547,6 +1547,7 @@ jobs:
         if: ${{ github.event.inputs.BUILD_FORM == 'BAZEL' || steps.fast_build.outputs.fallback == 'true' }}
         run: |
           cd kernel_workspace
+          export SKIP_DEFCONFIG_CHECK=1
           if [ -f ./kernel_platform/build_with_bazel.py ]; then
             ./kernel_platform/oplus/bazel/oplus_modules_variant.sh ${{ env.CPUD }} ${{ env.BUILD_METHOD }}
             ./kernel_platform/build_with_bazel.py -t ${{ env.CPUD }} ${{ env.BUILD_METHOD }}
