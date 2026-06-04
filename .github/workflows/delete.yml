@@ -1,4 +1,4 @@
-name: Workflow and Cache Cleanup
+name: 工作流与缓存清理
 
 on:
   workflow_dispatch:
