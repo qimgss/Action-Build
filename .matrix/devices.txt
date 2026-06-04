@@ -20,5 +20,3 @@
           oneplus_ace5_ultra_b(SCHED)
           oneplus_ace_6(SCHED)
           oneplus_15_Canary
-          oneplus_15t_Canary
-          oneplus_pad_4
