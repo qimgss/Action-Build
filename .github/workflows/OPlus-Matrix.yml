@@ -1297,7 +1297,9 @@ jobs:
           fi
 
           # 移除构建审查
-          sed -i 's/check_defconfig//' ./build.config.gki
+          if grep -q 'check_defconfig' kernel_platform/common/build.config.gki; then
+            sed -i 's/check_defconfig//' kernel_platform/common/build.config.gki
+          fi
 
       - name: 添加IPv6_NAT错误
         if: ${{ github.event.inputs.NETFILTER == 'true' }}
