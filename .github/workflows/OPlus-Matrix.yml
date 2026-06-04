@@ -690,21 +690,25 @@ jobs:
               BRANCH="main"
               ARTIFACT="manager"
               echo "KSU_REPO=tiann/KernelSU" >> "$GITHUB_OUTPUT"
+              echo "KSU_BRANCH_VERSION=KernelSU_${{ env.KSUVER }}" >> $GITHUB_OUTPUT
               ;;
             KernelSU-Next)
               BRANCH="old"
               ARTIFACT="manager"
               echo "KSU_REPO=KernelSU-Next/KernelSU-Next" >> "$GITHUB_OUTPUT"
+              echo "KSU_BRANCH_VERSION=KernelSU-Next_${{ env.KSUVER }}" >> $GITHUB_OUTPUT
               ;;
             Sukisu-Ultra)
               BRANCH="main"
               ARTIFACT="manager"
               echo "KSU_REPO=Sukisu-Ultra/Sukisu-Ultra" >> "$GITHUB_OUTPUT"
+              echo "KSU_BRANCH_VERSION=SukiSU-Ultra_${{ env.KSUVER }}" >> $GITHUB_OUTPUT
               ;;
             ReSukisu)
               BRANCH="main"
               ARTIFACT="manager"
               echo "KSU_REPO=ReSukiSU/ReSukiSU" >> "$GITHUB_OUTPUT"
+              echo "KSU_BRANCH_VERSION=ReSukiSU_${{ env.KSUVER }}" >> $GITHUB_OUTPUT
               ;;
           esac
 
@@ -1850,13 +1854,13 @@ jobs:
           ZRAM_STATUS="0关1开"
           ZRAM_SWSTA=$(echo "${{ github.event.inputs.ZRAM }}" | cut -d'/' -f1)
           if [[ "$ZRAM_SWSTA" == "1" ]]; then
-            ZRAM_ENABLED="✅"
+            ZRAM_ENABLED="✅" >> $GITHUB_ENV
             ZRAM_ALGO=$(echo "${{ github.event.inputs.ZRAM }}" | cut -d'/' -f2)
             ZRAM_SIZE=$(echo "${{ github.event.inputs.ZRAM }}" | cut -d'/' -f3)
-            ZRAM_INFO="算法: $ZRAM_ALGO, 大小: $ZRAM_SIZE"
+            ZRAM_INFO="算法: $ZRAM_ALGO, 大小: $ZRAM_SIZE" >> $GITHUB_ENV
           else
-            ZRAM_ENABLED="❌"
-            ZRAM_INFO=""
+            ZRAM_ENABLED="❌" >> $GITHUB_ENV
+            ZRAM_INFO="" >> $GITHUB_ENV
           fi
 
           # 处理SUSFS_META参数
@@ -1878,17 +1882,17 @@ jobs:
           ## 构建信息
           - **Android 版本**: `${{ needs.build.outputs.ANDROID_VERSION }}`
           - **内核版本**: `${{ needs.build.outputs.TKERNEL_VERSION }}`
-          - **KernelSU 版本**: `${{ needs.build.outputs.KSUVER }}`
+          - **KernelSU 版本**: `${{ needs.build.outputs.KSU_BRANCH_VERSIO }}`
           - **构建时间**: `${{ env.KBUILD_BUILD_TIMESTAMP }}`
           - **自定义后缀**: `${{ github.event.inputs.SUFFIX }}`
-          - **内核等级欺骗**: `${{ github.event.inputs.SUBLEVEL }}`
+          - **内核等级欺骗**: `${{ github.event.inputs.SUBLEVEL != ' ' && }}`
           
           ## 功能开关状态
           | 功能 | 状态 | 说明 |
           |------|------|------|
           | KernelSU分支 | `${{ github.event.inputs.KERNELSU_BRANCH }}` |  |
           | 内核模块实现 | `${{ github.event.inputs.KPM }}` |  |
-          | ZRAM | $ZRAM_ENABLED | $ZRAM_INFO |
+          | ZRAM | ${{ env.ZRAM_ENABLED }} | ${{ env.ZRAM_INFO }} |
           | 关键分区写入保护 | ${{ github.event.inputs.LSM_BBG == 'true' && '✅' || '❌' }} |  |
           | 网络功能拓展 | ${{ github.event.inputs.NETFILTER == 'true' && '✅' || '❌' }} |  |
           | 网络拥塞控制 | ${{ github.event.inputs.CCM == 'true' && '✅' || '❌' }} |  |
