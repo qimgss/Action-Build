@@ -62,11 +62,11 @@ Prohibit the promotion of forked repositories with **no modifications**; see [LI
 > [!IMPORTANT]
 >Data reference on the question of how long to run
 >
->|| Average Duration Range|Maximum Duration|
->|------------------|----------------------|------------|
->| `Ultra-fast build for all devices` | `1st:17min ~ 36min 2nd:6min ~ 17min` | `40/29min`|
->| `Kernel versions 5.10-5.15 built using official script` | `29min ~ 35min`| `45min`    |
->| `Kernel versions 6.1-6.12 built using official script` | `59min ~ 1h12min`| `1h28min` |
+>| Build Method | Average Duration Range | Maximum Duration |
+>|--------|------------------|----------------------|------------|
+>| `MAKE` | `All device` | `1st:17min ~ 36min 2nd:6min ~ 17min` | `40/29min`|
+>| `BAZEL` | `5.10~5.15` | `22min ~ 27min`| `28min`    |
+>| `BAZEL` | `6.1~6.12` | `59min ~ 1h38min`| `1h46min` |
 >
 > >Using ccache may slow down the first build; this only applies to ultra-fast builds.
 >

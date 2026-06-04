@@ -3,7 +3,7 @@ name: 编译任意一加内核
 on:
   workflow_dispatch:
     inputs:
-      BUILD_FORM:
+      BUILD_METHOD:
         type: choice
         description: "内核构建方式"
         required: true
@@ -1343,7 +1343,7 @@ jobs:
           sed -i '/obj-y.*gpueb/d' kernel_workspace/kernel-5.10/drivers/gpu/mediatek/Makefile
 
       - name: 使用 Make 构建内核
-        if: ${{ github.event.inputs.BUILD_FORM == 'MAKE' }}
+        if: ${{ github.event.inputs.BUILD_METHOD == 'MAKE' }}
         id: fast_build
         run: |
           KERNEL_VERSION="${{ env.KERNEL_VERSION }}"
@@ -1544,7 +1544,7 @@ jobs:
           ccache -s
 
       - name: 使用 Bazel 编译
-        if: ${{ github.event.inputs.BUILD_FORM == 'BAZEL' || steps.fast_build.outputs.fallback == 'true' }}
+        if: ${{ github.event.inputs.BUILD_METHOD == 'BAZEL' || steps.fast_build.outputs.fallback == 'true' }}
         run: |
           cd kernel_workspace
           export SKIP_DEFCONFIG_CHECK=1
