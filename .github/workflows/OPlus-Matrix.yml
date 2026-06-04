@@ -689,18 +689,22 @@ jobs:
             KernelSU|*)
               BRANCH="main"
               ARTIFACT="manager"
+              echo "KSU_REPO=tiann/KernelSU" >> "$GITHUB_OUTPUT"
               ;;
             KernelSU-Next)
               BRANCH="old"
               ARTIFACT="manager"
+              echo "KSU_REPO=KernelSU-Next/KernelSU-Next" >> "$GITHUB_OUTPUT"
               ;;
             Sukisu-Ultra)
               BRANCH="main"
               ARTIFACT="manager"
+              echo "KSU_REPO=Sukisu-Ultra/Sukisu-Ultra" >> "$GITHUB_OUTPUT"
               ;;
             ReSukisu)
               BRANCH="main"
               ARTIFACT="manager"
+              echo "KSU_REPO=ReSukiSU/ReSukiSU" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -1660,13 +1664,13 @@ jobs:
           echo "Using branch: $MANAGER_BRANCH"
           echo "Downloading artifact: $MANAGER_ARTIFACT"
 
-          run_id=$(gh api "repos/SukiSU-Ultra/SukiSU-Ultra/actions/workflows/build-manager.yml/runs?branch=$MANAGER_BRANCH&status=success&per_page=1" --jq '.workflow_runs[0].id' || echo "")
+          run_id=$(gh api "repos/${{ steps.manager.outputs.KSU_REPO }}/actions/workflows/build-manager.yml/runs?branch=$MANAGER_BRANCH&status=success&per_page=1" --jq '.workflow_runs[0].id' || echo "")
 
           if [[ -z "$run_id" ]]; then
             echo "No successful workflow run found on branch $MANAGER_BRANCH. Skipping download."
             exit 0
           fi
-          artifact_url=$(gh api "repos/SukiSU-Ultra/SukiSU-Ultra/actions/runs/$run_id/artifacts" | jq -r ".artifacts[] | select(.name == \"$MANAGER_ARTIFACT\") | .archive_download_url" | head -n1)
+          artifact_url=$(gh api "repos/${{ steps.manager.outputs.KSU_REPO }}/actions/runs/$run_id/artifacts" | jq -r ".artifacts[] | select(.name == \"$MANAGER_ARTIFACT\") | .archive_download_url" | head -n1)
 
           if [[ -z "$artifact_url" ]]; then
             echo "No artifact '$MANAGER_ARTIFACT' found in run $run_id. Skipping download."
@@ -1675,6 +1679,7 @@ jobs:
           echo "Downloading from: $artifact_url"
           curl -fL -H "Authorization: token $GITHUB_TOKEN" -o "${MANAGER_ARTIFACT}.zip" "$artifact_url"
           unzip -j "${MANAGER_ARTIFACT}.zip" "*.apk" -d ./AnyKernel3/
+          mv ./AnyKernel3/*.apk ./AnyKernel3/KernelSU.apk
 
       - name: 设置zip后缀
         id: suffix

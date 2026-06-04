@@ -674,18 +674,22 @@ jobs:
             KernelSU|*)
               BRANCH="main"
               ARTIFACT="manager"
+              echo "KSU_REPO=tiann/KernelSU" >> "$GITHUB_OUTPUT"
               ;;
             KernelSU-Next)
               BRANCH="old"
               ARTIFACT="manager"
+              echo "KSU_REPO=KernelSU-Next/KernelSU-Next" >> "$GITHUB_OUTPUT"
               ;;
             Sukisu-Ultra)
               BRANCH="main"
               ARTIFACT="manager"
+              echo "KSU_REPO=Sukisu-Ultra/Sukisu-Ultra" >> "$GITHUB_OUTPUT"
               ;;
             ReSukisu)
               BRANCH="main"
               ARTIFACT="manager"
+              echo "KSU_REPO=ReSukiSU/ReSukiSU" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -1648,6 +1652,7 @@ jobs:
           echo "Downloading from: $artifact_url"
           curl -fL -H "Authorization: token $GITHUB_TOKEN" -o "${MANAGER_ARTIFACT}.zip" "$artifact_url"
           unzip -j "${MANAGER_ARTIFACT}.zip" "*.apk" -d ./AnyKernel3/
+          mv ./AnyKernel3/*.apk ./AnyKernel3/KernelSU.apk
 
       - name: 设置 Zip 后缀
         id: suffix
