@@ -1368,14 +1368,9 @@ jobs:
           fi
 
           # 强制递推路径
-          CLANG_TOOLS_PREBUILT_NAME=$(find "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform" -maxdepth 1 -type d -name 'prebuilts*' -exec test -d '{}/clang-tools' \; -print | head -1)
-          if [[ -n "$CLANG_TOOLS_PREBUILT_NAME" ]]; then
-            CLANG_TOOLS_PREBUILT_NAME="$(basename "$CLANG_TOOLS_PREBUILT_NAME")/clang-tools"
-          else
-            CLANG_TOOLS_PREBUILT_NAME=$(find "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform" -maxdepth 1 -type d -name 'prebuilts*' -exec test -d '{}/clang/host/linux-x86' \; -print | head -1)
-            CLANG_TOOLS_PREBUILT_NAME="$(basename "$CLANG_TOOLS_PREBUILT_NAME")/clang"
-          fi
-          echo "✅ CLANG_TOOLS_PREBUILT_NAME=$CLANG_TOOLS_PREBUILT_NAME"
+          CLANG_PREBUILT_NAME=$(find "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform" -maxdepth 1 -type d -name 'prebuilts*' -exec test -d '{}/clang/host/linux-x86' \; -print | head -1)
+          CLANG_PREBUILT_NAME=$(basename "${CLANG_PREBUILT_NAME:-}")
+          echo "✅ CLANG_PREBUILT_NAME=$CLANG_PREBUILT_NAME"
 
           KERNEL_BUILD_TOOLS_PREBUILT_NAME=$(find "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform" -maxdepth 1 -type d -name 'prebuilts*' -exec test -d '{}/kernel-build-tools' \; -print | head -1)
           KERNEL_BUILD_TOOLS_PREBUILT_NAME=$(basename "${KERNEL_BUILD_TOOLS_PREBUILT_NAME:-}")
@@ -1389,14 +1384,12 @@ jobs:
 
           # 从 build.config.common 读取 CLANG_PREBUILT_BIN，或者用递推路径 fallback
           CLANG_PREBUILT_BIN=""
-          for f in ./common/build.config.common ./"$KERNEL_REPOS"/build.config.common; do
-            [[ -f "$f" ]] || continue
-            CLANG_PREBUILT_BIN=$(grep '^CLANG_PREBUILT_BIN=' "$f" | cut -d'=' -f2)
-            [[ -n "$CLANG_PREBUILT_BIN" ]] && break
-          done
+          if [[ -f ./common/build.config.common ]]; then
+            CLANG_PREBUILT_BIN=$(grep '^CLANG_PREBUILT_BIN=' ./common/build.config.common | cut -d'=' -f2-)
+          fi
 
           if [[ -z "$CLANG_PREBUILT_BIN" ]]; then
-            CLANG_PREBUILT_BIN="${CLANG_TOOLS_PREBUILT_NAME}/host/linux-x86/clang-zakozako/bin"
+            CLANG_PREBUILT_BIN="${CLANG_PREBUILT_NAME}/clang/host/linux-x86/clang-zakozako/bin"
           fi
 
           # 优先尝试从 CLANG_PREBUILT_BIN 识别出 clang-r，再去掉 clang-，作为 CLANG_VERSION
@@ -1411,7 +1404,7 @@ jobs:
 
           if [[ -z "$CLANG_VERSION" ]]; then
             echo "⚠️ 未能从 CLANG_PREBUILT_BIN 或 build.config.constants 获取到 Clang 版本，回退至官方构建脚本"
-            echo "fallback=true" >> "$GITHUB_OUTPUT"
+            echo "Fallback_to_Bazel=true" >> "$GITHUB_OUTPUT"
             echo "请考虑关闭 FAST_BUILD 并提交问题"
             exit 0
           fi
@@ -1442,7 +1435,7 @@ jobs:
 
           # BINDGEN 检测与 fallback
           if [[ "$ENABLE_RUST" == "true" ]]; then
-            BINDGEN_BIN="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/$CLANG_TOOLS_PREBUILT_NAME/linux-x86/bin/bindgen"
+            BINDGEN_BIN="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/$CLANG_PREBUILT_NAME/clang-tools/linux-x86/bin/bindgen"
             if [ -x "$BINDGEN_BIN" ]; then
               export BINDGEN="$BINDGEN_BIN"
               echo "✅ bindgen exists: $BINDGEN_BIN"
@@ -1519,9 +1512,6 @@ jobs:
           FPMAP="-ffile-prefix-map=$ROOT_REAL_PATH=."
 
           # KCFLAGS
-          KCFLAGS="$MAP $MPMAP $FPMAP -no-canonical-prefixes -Wno-error -D__ANDROID_COMMON_KERNEL__"
-
-          # KCFLAGS
           KCFLAGS="$MAP $FPMAP -no-canonical-prefixes -O2 -pipe -Wno-error -fno-stack-protector -D__ANDROID_COMMON_KERNEL__"
           KCPPFLAGS="$MPMAP"
 
@@ -1534,6 +1524,7 @@ jobs:
             HOSTLD=ld.lld
             PAHOLE="$PAHOLE_BIN"
             KCFLAGS="$KCFLAGS"
+            KCPPFLAGS="$KCPPFLAGS"
           )
 
           if [[ -n "$LD_WRAPPER" ]]; then
@@ -1564,7 +1555,7 @@ jobs:
           ccache -s
 
       - name: 使用 Bazel 编译
-        if: ${{ github.event.inputs.BUILD_METHOD == 'BAZEL' || steps.fast_build.outputs.fallback == 'true' }}
+        if: ${{ github.event.inputs.BUILD_METHOD == 'BAZEL' || steps.fast_build.outputs.Fallback_to_Bazel == 'true' }}
         run: |
           cd kernel_workspace
           export SKIP_DEFCONFIG_CHECK=1
