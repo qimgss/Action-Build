@@ -1885,7 +1885,6 @@ jobs:
           - **KernelSU 版本**: `${{ needs.build.outputs.KSU_BRANCH_VERSIO }}`
           - **构建时间**: `${{ env.KBUILD_BUILD_TIMESTAMP }}`
           - **自定义后缀**: `${{ github.event.inputs.SUFFIX }}`
-          - **内核等级欺骗**: `${{ github.event.inputs.SUBLEVEL != ' ' && }}`
           
           ## 功能开关状态
           | 功能 | 状态 | 说明 |
