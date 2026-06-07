@@ -199,7 +199,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: action/checkout@v6
+        uses: actions/checkout@v6
 
       - name: Generate Summary
         id: generate_summary
