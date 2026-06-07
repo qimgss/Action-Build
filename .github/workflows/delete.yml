@@ -11,6 +11,7 @@ on:
         options:
           - 编译任意一加内核
           - 矩阵构建所有一加内核
+          - 仅自身
           - CAll Build Start UP
       cache_mode:
         type: choice
@@ -73,7 +74,8 @@ jobs:
        || inputs.delete_success
        || inputs.delete_cancelled
        || inputs.target_run_numbers != ''
-       || inputs.target_run_ids != '' }}
+       || inputs.target_run_ids != ''
+       || inputs.workflow_name != '仅自身' }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
