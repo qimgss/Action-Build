@@ -301,7 +301,7 @@ jobs:
       - name: Clean the workflow own Run History
         run: |
           set -e
-          echo "清理本工作流（Workflow and Cache Cleanup）历史记录..."
+          echo "清理本工作流（工作流与缓存清理）历史记录..."
           DELETED=0
 
           while IFS=' ' read -r RUN_ID STATE; do
@@ -314,7 +314,7 @@ jobs:
               || echo "❌ 删除失败: $RUN_ID"
           done < <(gh run list \
             --repo "$REPO" \
-            --workflow "Workflow and Cache Cleanup" \
+            --workflow "工作流与缓存清理" \
             --limit 200 \
             --json databaseId,status \
             --jq '.[] | [(.databaseId | tostring), .status] | join(" ")')
