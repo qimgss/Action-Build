@@ -195,8 +195,25 @@ jobs:
           echo "Generated matrix:"
           echo "$MATRIX" | jq .
 
+  generate-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: action/checkout@v6
+
+      - name: Generate Summary
+        id: generate_summary
+        run: |
+          echo "### 矩阵构建的摘要" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Release发布形式  | ${{ inputs.RELEASE_TYPE }} | 发布到Release的形式(或不) |" >> $GITHUB_STEP_SUMMARY
+          echo "| KernelSU分支 | ${{ inputs.KERNELSU_BRANCH }} | KernelSU的分支 |" >> $GITHUB_STEP_SUMMARY
+          echo "| KPM实现方式 | $ZRAM_ENABLED | ZRAM算法 |" >> $GITHUB_STEP_SUMMARY
+
   build:
-    needs: prepare-matrix
+    needs: [prepare-matrix, generate-summary]
     strategy:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
       fail-fast: false
@@ -233,17 +250,6 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
-
-      - name: 生成Summary
-        id: generate_summary
-        run: |
-          echo "### 矩阵构建的摘要" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
-          echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Release发布形式  | ${{ inputs.RELEASE_TYPE }} | 发布到Release的形式(或不) |" >> $GITHUB_STEP_SUMMARY
-          echo "| KernelSU分支 | ${{ inputs.KERNELSU_BRANCH }} | KernelSU的分支 |" >> $GITHUB_STEP_SUMMARY
-          echo "| KPM实现方式 | $ZRAM_ENABLED | ZRAM算法 |" >> $GITHUB_STEP_SUMMARY
 
       - name: 提取清单信息
         id: extract_info
