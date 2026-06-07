@@ -138,6 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      fail-fast: false
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -1797,7 +1798,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() && github.event.inputs.RELEASE_TYPE != 'None' }}
+    if: ${{ github.event.inputs.RELEASE_TYPE != 'None' && needs.matrix_job.result == 'success' && !cancelled() }}
     steps:
       - name: 检出仓库代码
         uses: actions/checkout@v6
@@ -1886,12 +1887,10 @@ jobs:
           | 关键分区写入保护 | ${{ github.event.inputs.LSM_BBG == 'true' && '✅' || '❌' }} |  |
           | 网络功能拓展 | ${{ github.event.inputs.NETFILTER == 'true' && '✅' || '❌' }} |  |
           | 网络拥塞控制 | ${{ github.event.inputs.CCM == 'true' && '✅' || '❌' }} |  |
-          | Unicode绕过修复 | ${{ github.event.inputs.UNICODE_BYPASS == 'true' && '✅' || '❌' }} |  |
+          | Unicode字码点修复 | ${{ github.event.inputs.UNICODE_BYPASS == 'true' && '✅' || '❌' }} |  |
           | 轻量级Linux容器 | ${{ github.event.inputs.DROID_SPACES == 'true' && '✅' || '❌' }} |  |
           | Re-Kernel | ${{ github.event.inputs.RE_KERNEL == 'true' && '✅' || '❌' }} |  |
           | SUSFS-DEV分支 | ${{ github.event.inputs.SUSFS_DEV == 'true' && '✅' || '❌' }} |  |
-          | 停用空间清扫 | ${{ github.event.inputs.SPACE_NOCLEAN == 'true' && '✅' || '❌' }} |  |
-          | 停用Ccache | ${{ github.event.inputs.BUILD_NOCCACHE == 'true' && '✅' || '❌' }} |  |
           | 风驰内核调度 | ${{ env.SCHED_HMBIRD == 'true' && '✅' || '❌' }} |  |
           
           > 构建时间: `$(date '+%Y-%m-%d %H:%M:%S %Z')`
