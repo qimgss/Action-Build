@@ -198,9 +198,6 @@ jobs:
   generate-summary:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Generate Summary
         id: generate_summary
         run: |
@@ -740,25 +737,29 @@ jobs:
               BRANCH="main"
               ARTIFACT="manager"
               echo "KSU_REPO=tiann/KernelSU" >> "$GITHUB_OUTPUT"
-              echo "KSU_BRANCH_VERSION=KernelSU_${{ env.KSUVER }}" >> $GITHUB_OUTPUT
+              echo "KSU_BRANCH=KernelSU" >> $GITHUB_OUTPUT
+              echo "KSU_BRANCH=KernelSU" >> $GITHUB_ENV
               ;;
             KernelSU-Next)
               BRANCH="old"
               ARTIFACT="manager"
               echo "KSU_REPO=KernelSU-Next/KernelSU-Next" >> "$GITHUB_OUTPUT"
-              echo "KSU_BRANCH_VERSION=KernelSU-Next_${{ env.KSUVER }}" >> $GITHUB_OUTPUT
+              echo "KSU_BRANCH=KernelSU-Next" >> $GITHUB_OUTPUT
+              echo "KSU_BRANCH=KernelSU-Next" >> $GITHUB_ENV
               ;;
             SukiSU-Ultra)
               BRANCH="main"
               ARTIFACT="manager"
               echo "KSU_REPO=Sukisu-Ultra/Sukisu-Ultra" >> "$GITHUB_OUTPUT"
-              echo "KSU_BRANCH_VERSION=SukiSU-Ultra_${{ env.KSUVER }}" >> $GITHUB_OUTPUT
+              echo "KSU_BRANCH=SukiSU-Ultra" >> $GITHUB_OUTPUT
+             echo "KSU_BRANCH=SukiSU-Ultra" >> $GITHUB_ENV
               ;;
             ReSukisu)
               BRANCH="main"
               ARTIFACT="manager"
               echo "KSU_REPO=ReSukiSU/ReSukiSU" >> "$GITHUB_OUTPUT"
-              echo "KSU_BRANCH_VERSION=ReSukiSU_${{ env.KSUVER }}" >> $GITHUB_OUTPUT
+              echo "KSU_BRANCH=ReSukiSU" >> $GITHUB_OUTPUT
+              echo "KSU_BRANCH=ReSukiSU" >> $GITHUB_ENV
               ;;
           esac
 
@@ -775,6 +776,7 @@ jobs:
           KSU_VERSION=$(expr $(curl -sI "https://api.github.com/repos/tiann/KernelSU/commits?sha=${MANAGER_BRANCH}&per_page=1" | grep -i "link:" | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p') "+" 30000)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
+          echo "KSU_BRANCH_VERSION=${{ env.KSU_BRANCH }}-${{ env.KSUVER }}" >> $GITHUB_OUTPUT
           sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Kbuild
           
       - name: 添加KernelSU Next
@@ -866,6 +868,7 @@ jobs:
 
           KSU_VERSION=$(expr $(git rev-list --count "$MANAGER_BRANCH" 2>/dev/null || echo 13000) + 37185)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+          echo "KSUVER=$KSU_VERSION" >> $GITHUB_OUTPUT
 
           echo "::group::最终 Makefile 中版本信息及部分调试结果预览"
           grep -nE '^(REPO_OWNER|REPO_NAME|REPO_BRANCH|KSU_VERSION_API|KSU_VERSION_FULL|VERSION_TAG|GIT_BIN|CURL_BIN)' kernel/Makefile
@@ -1659,7 +1662,7 @@ jobs:
           KPN_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches/kpn"
           OUT_DIR="${GITHUB_WORKSPACE}/kernel_workspace/kernel_platform/out/Final-Image-Find"
           cd "${OUT_DIR}"
-          if [ "${{ github.event.inputs.KPM }}" = "KPM" ]; then
+          if [ "${{ github.event.inputs.KPM }}" = "KPM" ] || [ "${{ github.event.inputs.KERNELSU_BRANCH }}" = "SukiSU-Ultra" ]; then
             cp "${KPM_DIR}/patch_linux" .
             chmod +x patch_linux
             ./patch_linux
@@ -1867,7 +1870,7 @@ jobs:
           BUILD_TAG="build-$(date -u +'%Y%m%d-%H%M%S')"
           echo "RELEASE_TAG=$BUILD_TAG" >> $GITHUB_OUTPUT
           # Release 标题可以更友好一些
-          echo "RELEASE_TITLE=内核构建 $BUILD_TAG" >> $GITHUB_OUTPUT
+          echo "RELEASE_TITLE=${{ needs.build.outputs.KSU_BRANCH_VERSION }} $BUILD_TAG" >> $GITHUB_OUTPUT
 
       - name: 生成Release描述
         env:
