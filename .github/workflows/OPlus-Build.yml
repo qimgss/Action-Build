@@ -687,7 +687,7 @@ jobs:
           KERNELSU_BRANCH="${{ github.event.inputs.KERNELSU_BRANCH }}"
 
           case "$KERNELSU_BRANCH" in
-            KernelSU|*)
+            KernelSU)
               BRANCH="main"
               ARTIFACT="manager"
               echo "KSU_REPO=tiann/KernelSU" >> "$GITHUB_OUTPUT"
