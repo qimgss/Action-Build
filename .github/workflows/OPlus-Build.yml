@@ -820,7 +820,6 @@ jobs:
           echo "::endgroup::"
 
       - name: 应用KernelSU补丁
-        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'KernelSU' }}
         env:
           FILE: ${{ github.event.inputs.FILE }}
         run: |
