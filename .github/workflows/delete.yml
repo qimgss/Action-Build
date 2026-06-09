@@ -73,7 +73,7 @@ jobs:
        || inputs.delete_success
        || inputs.delete_cancelled
        || inputs.target_run_numbers != ''
-       || inputs.target_run_ids != ''
+       || inputs.target_run_ids != '' }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
