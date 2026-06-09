@@ -1016,7 +1016,7 @@ jobs:
           source $REJ_CHECKER
           check_rejects .
 
-      - name: Apply UNICODE_BYPASS
+      - name: 启用不可见字码点修复
         if: ${{ github.event.inputs.UNICODE_BYPASS == 'true' }}
         run: |
           PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches"
@@ -1620,7 +1620,7 @@ jobs:
           mv -f oImage Image
           cp Image "${GITHUB_WORKSPACE}/AnyKernel3/Image"
 
-      - name: Download Latest SUSFS Module from CI
+      - name: 从CI下载最新 SUSFS 模块
         if: ${{ github.event.inputs.SUSFS_CI == 'CI' && github.event.inputs.SUSFS_META != '-1' }}
         continue-on-error: true
         run: |
