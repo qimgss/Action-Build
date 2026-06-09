@@ -1364,7 +1364,7 @@ jobs:
       - name: 添加IPv6_NAT错误
         if: ${{ github.event.inputs.NETFILTER == 'true' }}
         run: |
-          PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches"
+          PATCH_DIR="../../Action-Build/patches"
           cd kernel_workspace/kernel_platform/common
           if [[ "${CPU}" == sm* ]]; then
             echo "修复启用IPv6 NAT后可能出现的设备误报…"
