@@ -1852,7 +1852,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.RELEASE_TYPE != 'None' && needs.matrix_job.result == 'success' && !cancelled() }}
+    if: ${{ github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' && !cancelled() }}
     steps:
       - name: 检出仓库代码
         uses: actions/checkout@v6
