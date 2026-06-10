@@ -219,6 +219,10 @@ jobs:
       ${{ matrix.sched_hmbird == 'true' && 'HMBIRD' || 'NORMAL' }}
       Build ${{ matrix.file }}
     runs-on: ubuntu-latest
+    outputs:
+      KSU_BRANCH_VERSION: ${{ steps.add_ksu.outputs.KSU_BRANCH_VERSION || steps.add_ksu_next.outputs.KSU_BRANCH_VERSION || steps.add_sukisu_ultra.outputs.KSU_BRANCH_VERSION || steps.add_resukisu.outputs.KSU_BRANCH_VERSION }}
+      ANDROID_VERSION: ${{ steps.extract_info.outputs.ANDROID_VERSION }}
+      TKERNEL_VERSION: ${{ steps.kernel_version.outputs.TKERNEL_VERSION }}
 
     env:
       FILE: ${{ matrix.file }}
@@ -756,6 +760,7 @@ jobs:
           echo "manager_artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
 
       - name: 添加KernelSU
+        id: add_ksu
         if: ${{ github.event.inputs.KERNELSU_BRANCH == 'KernelSU' }}
         run: |
           cd kernel_workspace/kernel_platform
@@ -769,6 +774,7 @@ jobs:
           sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Kbuild
           
       - name: 添加KernelSU Next
+        id: add_ksu_next
         if: ${{ github.event.inputs.KERNELSU_BRANCH == 'KernelSU-Next' }}
         run: |
           cd kernel_workspace/kernel_platform
@@ -785,6 +791,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform"
 
       - name: 添加SukiSU Ultra
+        id: add_sukisu_ultra
         if: ${{ github.event.inputs.KERNELSU_BRANCH == 'Sukisu-Ultra' }}
         run: |
           cd kernel_workspace/kernel_platform
@@ -1859,11 +1866,25 @@ jobs:
       - name: 生成 Release 标签和标题
         id: tag_info
         run: |
-          # 使用内核版本和当前时间生成一个唯一的标签，例如 “build-20240507-120305”
           BUILD_TAG="build-$(date -u +'%Y%m%d-%H%M%S')"
           echo "RELEASE_TAG=$BUILD_TAG" >> $GITHUB_OUTPUT
-          # Release 标题可以更友好一些
-          echo "RELEASE_TITLE=${{ needs.build.outputs.KSU_BRANCH_VERSION }} $BUILD_TAG" >> $GITHUB_OUTPUT
+          
+          # 从矩阵 Job 的输出中获取第一个有效的 KSU_BRANCH_VERSION
+          # 使用 join 将数组转为空格分隔的字符串
+          KSU_BRANCH_VERSION=""
+          for version in ${{ join(needs.build.outputs.KSU_BRANCH_VERSION, ' ') }}; do
+            if [ -n "$version" ]; then
+              KSU_BRANCH_VERSION="$version"
+              break
+            fi
+          done
+          
+          # 如果仍然为空，使用默认值
+          if [ -z "$KSU_BRANCH_VERSION" ]; then
+            KSU_BRANCH_VERSION="KernelSU-Next"
+          fi
+          
+          echo "RELEASE_TITLE=$KSU_BRANCH_VERSION $BUILD_TAG" >> $GITHUB_OUTPUT
 
       - name: 生成Release描述
         env:
