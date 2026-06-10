@@ -370,9 +370,6 @@ jobs:
           echo "Selected KERNELSU_BRANCH: ${{ github.event.inputs.KERNELSU_BRANCH }}"
           echo "Selected EXCLUDE_DEVICE=${{ github.event.inputs.EXCLUDE_DEVICES }}"
           echo "Selected SUSFS_CI: ${{ github.event.inputs.SUSFS_CI }}"
-          if [ "${{ github.event.inputs.KERNELSU_BRANCH }}" = "SukiSU-Ultra" && "${{ github.event.inputs.SUSFS_CI }}" != "N/A" ]; then
-            echo "::warning title=SUSFS Not Required::当前管理器已自带附加模块，无需启用 SUSFS 模块，强制启用可能导致不开机。"
-          fi
           echo "Selected KPM: ${{ github.event.inputs.KPM }}"
           echo "Custom SUSFS_META: ${{ github.event.inputs.SUSFS_META }}"
           echo "Selected ZRAM: ${{ github.event.inputs.ZRAM }}"
@@ -470,14 +467,6 @@ jobs:
         run: |
           git config --global user.name "qimgss"
           git config --global user.email "qimgss@126.com"
-
-      - name: 分叉检测
-        run: |
-          repo="${{ github.repository }}"; json=$(curl -s "https://api.github.com/repos/$repo")
-          parent=$(echo "$json" | grep -o '"full_name": *"[^"]*"' | head -n 2 | tail -n 1 | sed 's/.*"full_name": *"\([^"]*\)".*/\1/')
-          if [ -n "$parent" ] && [ "$parent" != "qimgss/Action-Build" ]; then
-            echo "::warning title=Source Warning::您使用的内核编译地址为非官方源，可能导致运行失败或内核异常。"
-          fi
 
       - name: 拒绝检测
         run: |
@@ -791,6 +780,7 @@ jobs:
           sed -i "s/KSU_VERSION_FALLBACK := 1/KSU_VERSION_FALLBACK := $KSU_VERSION/g" kernel/Kbuild
           KSU_GIT_TAG=$(curl -sL "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/tags" | grep -o '"name": *"[^"]*"' | head -n 1 | sed 's/"name": "//;s/"//')
           sed -i "s/KSU_VERSION_TAG_FALLBACK := v0.0.1/KSU_VERSION_TAG_FALLBACK := $KSU_GIT_TAG/g" kernel/Kbuild
+          echo "KSU_BRANCH_VERSION=${{ env.KSU_BRANCH }}-${{ env.KSUVER }}" >> $GITHUB_OUTPUT
           # 返回目录
           cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform"
 
@@ -874,6 +864,7 @@ jobs:
 
           echo "::group::最终 Makefile 中版本信息及部分调试结果预览"
           grep -nE '^(REPO_OWNER|REPO_NAME|REPO_BRANCH|KSU_VERSION_API|KSU_VERSION_FULL|VERSION_TAG|GIT_BIN|CURL_BIN)' kernel/Makefile
+          echo "KSU_BRANCH_VERSION=${{ env.KSU_BRANCH }}-${{ env.KSUVER }}" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
       - name: 应用KernelSU补丁
