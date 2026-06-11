@@ -1989,7 +1989,6 @@ jobs:
           |------|------|------|
           | KernelSU分支 | `${{ github.event.inputs.KERNELSU_BRANCH }}` |  |
           | 内核模块实现 | `${{ github.event.inputs.KPM }}` |  |
-          | ZRAM | ${{ env.ZRAM_ENABLED }} | ${{ env.ZRAM_INFO }} |
           | 关键分区写入保护 | ${{ github.event.inputs.LSM_BBG == 'true' && '✅' || '❌' }} |  |
           | 网络功能拓展 | ${{ github.event.inputs.NETFILTER == 'true' && '✅' || '❌' }} |  |
           | 网络拥塞控制 | ${{ github.event.inputs.CCM == 'true' && '✅' || '❌' }} |  |
