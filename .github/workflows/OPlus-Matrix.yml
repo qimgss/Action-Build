@@ -772,6 +772,7 @@ jobs:
           echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
           echo "KSU_BRANCH_VERSION=${{ env.KSU_BRANCH }}-${{ env.KSUVER }}" >> $GITHUB_OUTPUT
           sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Kbuild
+          echo "KSU_BRANCH_VERSION=KernelSU-$KSU_VERSION" >> $GITHUB_OUTPUT
           
       - name: 添加KernelSU Next
         id: add_ksu_next
@@ -789,6 +790,7 @@ jobs:
           echo "KSU_BRANCH_VERSION=${{ env.KSU_BRANCH }}-${{ env.KSUVER }}" >> $GITHUB_OUTPUT
           # 返回目录
           cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform"
+          echo "KSU_BRANCH_VERSION=KernelSU-$KSU_VERSION" >> $GITHUB_OUTPUT
 
       - name: 添加SukiSU Ultra
         id: add_sukisu_ultra
@@ -873,6 +875,44 @@ jobs:
           grep -nE '^(REPO_OWNER|REPO_NAME|REPO_BRANCH|KSU_VERSION_API|KSU_VERSION_FULL|VERSION_TAG|GIT_BIN|CURL_BIN)' kernel/Makefile
           echo "KSU_BRANCH_VERSION=${{ env.KSU_BRANCH }}-${{ env.KSUVER }}" >> $GITHUB_OUTPUT
           echo "::endgroup::"
+          
+          echo "KSU_BRANCH_VERSION=KernelSU-$KSU_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Add ReSukiSU
+        id: add_resukisu
+        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'ReSukiSU' }}
+
+        run: |
+          cd kernel_workspace/kernel_platform
+          MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
+          KSU_META="${{ github.event.inputs.KSU_META }}"
+
+          # 必须包含两个分隔符（至少三个字段）
+          if [[ "$(grep -o '/' <<< "$KSU_META" | wc -l)" -lt 2 ]]; then
+            echo "错误: KSU_META 参数缺少必要的分隔符 '/'，格式应为: 分支名/自定义标识(可省略)/提交hash(可省略)"
+            exit 10
+          fi
+
+          # 解析字段：分支 / 自定义标识 / 手动 hash
+          IFS='/' read -r BRANCH_NAME KSU_CUSTOM_TAG MANUAL_HASH <<< "$KSU_META"
+
+          echo "分支名: $BRANCH_NAME"
+          [[ -n "$KSU_CUSTOM_TAG" ]] && echo "自定义版本标识: $KSU_CUSTOM_TAG" || echo "自定义版本标识: 未启用"
+          [[ -n "$MANUAL_HASH" ]] && echo "手动指定 hash: $MANUAL_HASH" || echo "手动指定 hash: 未启用"
+
+          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/${MANAGER_BRANCH}/kernel/setup.sh" | bash -s "$BRANCH_NAME"
+          cd ./KernelSU
+
+          if [[ -n "$KSU_CUSTOM_TAG" ]]; then
+            echo "KSU_CUSTOM_TAG=$KSU_CUSTOM_TAG" >> "$GITHUB_ENV"
+          fi
+          if [[ -n "$MANUAL_HASH" ]]; then
+            git fetch origin "$BRANCH_NAME" --depth=50
+            git checkout "$MANUAL_HASH"
+          fi
+
+          KSU_VERSION=$(expr $(git rev-list --count "$MANAGER_BRANCH" 2>/dev/null || echo 13000) + 30700)
+          echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
 
       - name: 应用KernelSU补丁
         env:
@@ -1850,7 +1890,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' && !cancelled() }}
+    if: ${{ github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' || needs.build.result == 'skipped' && !cancelled() }}
     steps:
       - name: 检出仓库代码
         uses: actions/checkout@v6
