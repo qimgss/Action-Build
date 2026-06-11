@@ -1999,7 +1999,6 @@ jobs:
           | SUSFS-DEV分支 | ${{ github.event.inputs.SUSFS_DEV == 'true' && '✅' || '❌' }} |  |
           | 风驰内核调度 | ${{ env.SCHED_HMBIRD == 'true' && '✅' || '❌' }} |  |
           
-          > 构建时间: `$(date '+%Y-%m-%d %H:%M:%S %Z')`
           > 工作流运行: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           EOF
 
