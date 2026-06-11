@@ -1781,6 +1781,7 @@ jobs:
           echo "ak3name=$AK3_ZIP_NAME" >> $GITHUB_OUTPUT
           cd ./AnyKernel3
           zip -r "../$AK3_ZIP_NAME" .
+          cd ../
 
       - name: 上传 AnyKernel3
         uses: actions/upload-artifact@v7
