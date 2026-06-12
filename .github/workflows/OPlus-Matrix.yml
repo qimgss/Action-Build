@@ -1980,7 +1980,7 @@ jobs:
           ZRAM: ${{ github.event.inputs.ZRAM }}
           SUFFIX: ${{ github.event.inputs.SUFFIX }}
           SUBLEVEL: ${{ github.event.inputs.SUBLEVEL }}
-          BUILD_METHOD: ${{ BUILD_METHOD }}
+          BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD }}
           LSM_BBG: ${{ github.event.inputs.LSM_BBG }}
           NETFILTER: ${{ github.event.inputs.NETFILTER }}
           CCM: ${{ github.event.inputs.CCM }}
