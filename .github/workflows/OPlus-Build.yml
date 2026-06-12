@@ -198,7 +198,7 @@ jobs:
       - name: 生成摘要
         id: generate_summary
         run: |
-          echo "### 矩阵构建的摘要" >> $GITHUB_STEP_SUMMARY
+          echo "### 此次构建的摘要" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
@@ -1734,7 +1734,7 @@ jobs:
       - name: 上传 AnyKernel3
         uses: actions/upload-artifact@v7
         with:
-          name: AnyKernel3_SukiSUUltra_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
+          name: AnyKernel3_${{ github.event.inputs.KERNELSU_BRANCH }}_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
           path: ./AnyKernel3/*
 
       - name: 上传并处理 ZRAM 模块
