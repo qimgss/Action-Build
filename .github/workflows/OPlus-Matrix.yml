@@ -781,12 +781,20 @@ jobs:
       - name: 添加KernelSU Next
         id: add_ksu_next
         if: ${{ github.event.inputs.KERNELSU_BRANCH == 'KernelSU-Next' }}
+        env:
+          IS_DEV_SUSFS: ${{ github.event.inputs.DEV_SUSFS_BRANCH }}
         run: |
+          IS_DEV_SUSFS=${{ env.IS_DEV_SUSFS }}
+          if ${{ $IS_DEV_SUSFS = "true" }}; then
+              KSU_NEXT_BRANCH="dev-susfs"
+          else
+              KSU_NEXT_BRANCH="dev"
+          fi
           cd kernel_workspace/kernel_platform
           MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
-          curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/refs/heads/${MANAGER_BRANCH}/kernel/setup.sh" | bash -s dev-susfs
+          curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/refs/heads/${KSU_NEXT_BRANCH}/kernel/setup.sh" | bash -s dev-susfs
           cd KernelSU-Next
-          KSU_VERSION=$(expr $(curl -sI "https://api.github.com/repos/pershoot/KernelSU-Next/commits?sha=${MANAGER_BRANCH}&per_page=1" | grep -i "link:" | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p') "+" 30000)
+          KSU_VERSION=$(expr $(curl -sI "https://api.github.com/repos/pershoot/KernelSU-Next/commits?sha=${KSU_NEXT_BRANCH}&per_page=1" | grep -i "link:" | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p') "+" 30000)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           sed -i "s/KSU_VERSION_FALLBACK := 1/KSU_VERSION_FALLBACK := $KSU_VERSION/g" kernel/Kbuild
           KSU_GIT_TAG=$(curl -sL "https://api.github.com/repos/KernelSU-Next/KernelSU-Next/tags" | grep -o '"name": *"[^"]*"' | head -n 1 | sed 's/"name": "//;s/"//')
@@ -798,7 +806,7 @@ jobs:
 
       - name: 添加SukiSU Ultra
         id: add_sukisu_ultra
-        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'Sukisu-Ultra' }}
+        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'SukiSU-Ultra' }}
         run: |
           cd kernel_workspace/kernel_platform
           MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
@@ -882,10 +890,9 @@ jobs:
           
           echo "KSU_BRANCH_VERSION=KernelSU-$KSU_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Add ReSukiSU
+      - name: 添加ReSukiSU
         id: add_resukisu
         if: ${{ github.event.inputs.KERNELSU_BRANCH == 'ReSukiSU' }}
-
         run: |
           cd kernel_workspace/kernel_platform
           MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
