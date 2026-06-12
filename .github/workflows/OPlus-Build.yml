@@ -187,7 +187,7 @@ on:
       DEV_SUSFS_BRANCH:
         type: boolean
         description: "是否为启用dev-susfs分支(仅KernelSU-Next有效)"
-        required: falss
+        required: false
         default: false
 
 jobs:
@@ -833,6 +833,8 @@ jobs:
           echo "::endgroup::"
 
       - name: 添加ReSukiSU
+        id: add_resukisu
+        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'ReSukiSU' }}
         run: |
           cd kernel_workspace/kernel_platform
           MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"

@@ -139,7 +139,7 @@ on:
       DEV_SUSFS_BRANCH:
         type: boolean
         description: "是否为启用dev-susfs分支(仅KernelSU-Next有效)"
-        required: falss
+        required: false
         default: false
 jobs:
   prepare-matrix:
