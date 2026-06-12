@@ -204,9 +204,13 @@ jobs:
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
           echo "| KernelSU分支 | ${{ inputs.KERNELSU_BRANCH }} | KernelSU的分支 |" >> $GITHUB_STEP_SUMMARY
           echo "| KPM实现方式 | ${{ inputs.KPM }} | KPM实现方式 |" >> $GITHUB_STEP_SUMMARY
-
+          if [ "$KSU_BRANCH" = "KernelSU-Next" ] && [ "$IS_DEV_SUSFS" = 'true' ]; then
+              echo "| SuSFS | KSU-Next | SuSFS调用 |" >> $GITHUB_STEP_SUMMARY
+          else
+              echo "| SuSFS | $KSU_BRANCH | SuSFS调用 |" >> $GITHUB_STEP_SUMMARY
+          fi
   build:
-    name: ${{ github.event.inputs.FAST_BUILD == 'true' && ' [FAST]' || '' }}${{ contains(github.event.inputs.FILE, '_aosp') && ' [AOSP]' || '' }}${{ github.event.inputs.KPM == 'KPM' && ' [KPM]' || github.event.inputs.KPM == 'KPN' && ' [KPN]' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && ' [BBG]' || '' }}${{ github.event.inputs.SCHED_HMBIRD == 'true' && ' [HMBIRD]' || '' }}${{ github.event.inputs.DROID_SPACES == 'true' && ' [DS]' || '' }}${{ startsWith(github.event.inputs.ZRAM, '1/') && ' [ZRAM]' || '' }}${{ github.event.inputs.REKERNEL == 'true' && ' [REKER]' || '' }}For ${{ github.event.inputs.FILE }} ${{ github.event.inputs.SUFFIX }}
+    name: ${{ github.event.inputs.BUILD_METHOD == 'Make' && ' [MAKE]' || '' }}${{ contains(github.event.inputs.FILE, '_aosp') && ' [AOSP]' || '' }}${{ github.event.inputs.KPM == 'KPM' && ' [KPM]' || github.event.inputs.KPM == 'KPN' && ' [KPN]' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && ' [BBG]' || '' }}${{ github.event.inputs.SCHED_HMBIRD == 'true' && ' [HMBIRD]' || '' }}${{ github.event.inputs.DROID_SPACES == 'true' && ' [DS]' || '' }}${{ startsWith(github.event.inputs.ZRAM, '1/') && ' [ZRAM]' || '' }}${{ github.event.inputs.REKERNEL == 'true' && ' [REKER]' || '' }}For ${{ github.event.inputs.FILE }} ${{ github.event.inputs.SUFFIX }}
     needs: generate-summary
     runs-on: ubuntu-latest
     env:
@@ -734,7 +738,7 @@ jobs:
           IS_DEV_SUSFS: ${{ github.event.inputs.DEV_SUSFS_BRANCH }}
         run: |
           IS_DEV_SUSFS=${{ env.IS_DEV_SUSFS }}
-          if ${{ $IS_DEV_SUSFS = "true" }}; then
+          if [ $IS_DEV_SUSFS = "true" ]; then
               KSU_NEXT_BRANCH="dev-susfs"
           else
               KSU_NEXT_BRANCH="dev"

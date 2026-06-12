@@ -204,13 +204,23 @@ jobs:
     steps:
       - name: Generate Summary
         id: generate_summary
+        env:
+          KSU_BRANCH: ${{ github.event.inputs.KERNELSU_BRANCH }}
+          Is_DEV_SUSFS: ${{ github.event.inputs.DEV_SUSFS_BRANCH }}
         run: |
+          KSU_BRANCH="${{ env.KSU_BRANCH }}"
+          Is_DEV_SUSFS="${{ emv.Is_DEV_SUSFS }}"
           echo "### 矩阵构建的摘要" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
           echo "| Release发布形式  | ${{ inputs.RELEASE_TYPE }} | 发布到Release的形式(或不) |" >> $GITHUB_STEP_SUMMARY
           echo "| KernelSU分支 | ${{ inputs.KERNELSU_BRANCH }} | KernelSU的分支 |" >> $GITHUB_STEP_SUMMARY
+          if [ "$KSU_BRANCH" = "KernelSU-Next" ] && [ "$IS_DEV_SUSFS" = 'true' ]; then
+              echo "| SuSFS | KSU-Next | SuSFS调用 |" >> $GITHUB_STEP_SUMMARY
+          else
+              echo "| SuSFS | $KSU_BRANCH | SuSFS调用 |" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "| KPM实现方式 | ${{ inputs.KPM }} | KPM实现方式 |" >> $GITHUB_STEP_SUMMARY
 
   build:
@@ -220,8 +230,9 @@ jobs:
       fail-fast: false
 
     name: >
-      ${{ matrix.sched_hmbird == 'true' && 'HMBIRD' || 'NORMAL' }}
+      ${{ matrix.sched_hmbird == 'true' && '[SCHED]' || '[NORMAL]' }}
       Build ${{ matrix.file }}
+      
     runs-on: ubuntu-latest
     outputs:
       KSU_BRANCH_VERSION: ${{ steps.add_ksu.outputs.KSU_BRANCH_VERSION || steps.add_ksu_next.outputs.KSU_BRANCH_VERSION || steps.add_sukisu_ultra.outputs.KSU_BRANCH_VERSION || steps.add_resukisu.outputs.KSU_BRANCH_VERSION }}
@@ -385,7 +396,7 @@ jobs:
           echo "Selected NETFILTER: ${{ github.event.inputs.NETFILTER }}"
           echo "Selected CCM: ${{ github.event.inputs.CCM }}"
           echo "Selected SUSFS_DEV: ${{ github.event.inputs.SUSFS_DEV }}"
-          echo "Selected FAST_BUILD: ${{ github.event.inputs.FAST_BUILD }}"
+          echo "Selected BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD }}"
           echo "Selected SCHED_HMBIRD: ${{ env.SCHED_HMBIRD }}"
           echo "Selected UNICODE_BYPASS: ${{ github.event.inputs.UNICODE_BYPASS }}"
           echo "Selected DROID_SPACES: ${{ github.event.inputs.DROID_SPACES }}"
@@ -508,7 +519,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ env.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.2
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ env.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.BUILD_METHOD == 'true' && 'alpha' || 'beta' }}-16.2
 
       - name: 初始化Ccache
         if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
@@ -645,7 +656,7 @@ jobs:
           cd kernel_workspace
           SUFFIX="${{ github.event.inputs.SUFFIX }}"
           KANDROID_VERSION="${{ env.KANDROID_VERSION }}"
-          FAST_BUILD="${{ github.event.inputs.FAST_BUILD }}"
+          BUILD_METHOD="${{ github.event.inputs.BUILD_METHOD }}"
 
           for f in ./common/scripts/setlocalversion ./"$KERNEL_REPOS"/scripts/setlocalversion ./external/dtc/scripts/setlocalversion; do
             [ -f "$f" ] || continue
@@ -660,8 +671,8 @@ jobs:
               sed -i "s|echo \"\${KERNELVERSION}.*scm_version}\"|echo \"\${KERNELVERSION}-${KANDROID_VERSION}-${SUFFIX}\"|" "$f"
             elif grep -q 'echo "\$res"' "$f"; then
               echo "Detected OLD setlocalversion format"
-              if [ "$FAST_BUILD" = "true" ]; then
-                echo "FAST_BUILD enabled: using static res"
+              if [ "$BUILD_METHOD" = "Make" ]; then
+                echo "MAKE_BUILD enabled: using static res"
                 sed -i "s/^res=.*/res=\"-${KANDROID_VERSION}-${SUFFIX}\"/" "$f"
               else
                 echo "Standard build: injecting suffix via cut/echo"
@@ -687,7 +698,7 @@ jobs:
         run: |
           cd kernel_workspace
           KANDROID_VERSION="${{ env.KANDROID_VERSION }}"
-          FAST_BUILD="${{ github.event.inputs.FAST_BUILD }}"
+          BUILD_METHOD="${{ github.event.inputs.BUILD_METHOD }}"
 
           # 生成随机数字和随机hash
           RANDOM_DIGIT=$(od -An -N1 -tu1 < /dev/urandom | tr -d '[:space:]' | awk '{print $1 % 11}')
@@ -707,8 +718,8 @@ jobs:
               sed -i "s|echo \"\${KERNELVERSION}.*scm_version}\"|echo \"\${KERNELVERSION}-${KANDROID_VERSION}-${RANDOM_SUFFIX}\"|" "$f"
             elif grep -q 'echo "\$res"' "$f"; then
               echo "Detected OLD setlocalversion format"
-              if [ "$FAST_BUILD" = "true" ]; then
-                echo "FAST_BUILD enabled: using static res with random suffix"
+              if [ "$BUILD_METHOD" = "Make" ]; then
+                echo "MAKE_BUILD enabled: using static res with random suffix"
                 sed -i "s/^res=.*/res=\"-${KANDROID_VERSION}-${RANDOM_SUFFIX}\"/" "$f"
               else
                 echo "Standard build: injecting random suffix via cut/echo"
@@ -785,7 +796,7 @@ jobs:
           IS_DEV_SUSFS: ${{ github.event.inputs.DEV_SUSFS_BRANCH }}
         run: |
           IS_DEV_SUSFS=${{ env.IS_DEV_SUSFS }}
-          if ${{ $IS_DEV_SUSFS = "true" }}; then
+          if [ $IS_DEV_SUSFS = "true" ]; then
               KSU_NEXT_BRANCH="dev-susfs"
           else
               KSU_NEXT_BRANCH="dev"
@@ -1459,7 +1470,7 @@ jobs:
 
       - name: 使用 Make 构建内核
         if: ${{ github.event.inputs.BUILD_METHOD == 'MAKE' }}
-        id: fast_build
+        id: make_build
         run: |
           KERNEL_VERSION="${{ env.KERNEL_VERSION }}"
           cd kernel_workspace/kernel_platform
@@ -1509,7 +1520,7 @@ jobs:
           if [[ -z "$CLANG_VERSION" ]]; then
             echo "⚠️ 未能从 CLANG_PREBUILT_BIN 或 build.config.constants 获取到 Clang 版本，回退至官方构建脚本"
             echo "Fallback_to_Bazel=true" >> "$GITHUB_OUTPUT"
-            echo "请考虑关闭 FAST_BUILD 并提交问题"
+            echo "请考虑关闭 Make 构建并提交问题"
             exit 0
           fi
 
@@ -1659,7 +1670,7 @@ jobs:
           ccache -s
 
       - name: 使用 Bazel 编译
-        if: ${{ github.event.inputs.BUILD_METHOD == 'BAZEL' || steps.fast_build.outputs.Fallback_to_Bazel == 'true' }}
+        if: ${{ github.event.inputs.BUILD_METHOD == 'BAZEL' || steps.make_build.outputs.Fallback_to_Bazel == 'true' }}
         run: |
           cd kernel_workspace
           export SKIP_DEFCONFIG_CHECK=1
@@ -1864,10 +1875,10 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.8
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.BUILD_METHOD == 'Make' && 'alpha' || 'beta' }}-16.8
 
       - name: 保存 ThinLTO 缓存
-        if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.FAST_BUILD == 'true' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
+        if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.BUILD_METHOD == 'Make' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v5
         with:
           path: ${{ github.workspace }}/kernel_workspace/.thinlto-cache
@@ -1969,7 +1980,7 @@ jobs:
           ZRAM: ${{ github.event.inputs.ZRAM }}
           SUFFIX: ${{ github.event.inputs.SUFFIX }}
           SUBLEVEL: ${{ github.event.inputs.SUBLEVEL }}
-          FAST_BUILD: ${{ github.event.inputs.FAST_BUILD }}
+          BUILD_METHOD: ${{ BUILD_METHOD }}
           LSM_BBG: ${{ github.event.inputs.LSM_BBG }}
           NETFILTER: ${{ github.event.inputs.NETFILTER }}
           CCM: ${{ github.event.inputs.CCM }}
