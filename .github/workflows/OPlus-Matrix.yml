@@ -86,6 +86,11 @@ on:
         description: "自定义内核等级欺骗(SUBLEVEL)"
         required: false
         default: ""
+      EXCLUDE_DEVICES:
+        type: string
+        description: "排除的配置文件（逗号分隔，例如：oneplus_15_Canary,oneplus_ace5_b）"
+        required: false
+        default: "oneplus_15_Canary,oneplus_15t_Canary"
       LSM_BBG:
         type: boolean
         description: "是否启用关键分区写入保护模块(BBG)？"
@@ -131,12 +136,11 @@ on:
         description: "是否停用此次Ccache？"
         required: true
         default: false
-      EXCLUDE_DEVICES:
-        type: string
-        description: "排除的配置文件（逗号分隔，例如：oneplus_15_Canary,oneplus_ace5_b）"
-        required: false
-        default: "oneplus_15_Canary,oneplus_15t_Canary"
-
+      DEV_SUSFS_BRANCH:
+        type: boolean
+        description: "是否为启用dev-susfs分支(仅KernelSU-Next有效)"
+        required: falss
+        default: false
 jobs:
   prepare-matrix:
     runs-on: ubuntu-latest
@@ -1748,17 +1752,21 @@ jobs:
       
       - name: 压缩 AnyKernel3
         id: compress
+        env:
+          KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
         run: |
-          AK3_ZIP_NAME="AnyKernel3_KernelSU_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}.zip"
+          AK3_ZIP_NAME="${{ env.KSU_NAME }}${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}.zip"
           echo "ak3name=$AK3_ZIP_NAME" >> $GITHUB_OUTPUT
           cd ./AnyKernel3
           zip -r "../$AK3_ZIP_NAME" .
           cd ../
 
       - name: 上传 AnyKernel3
+        env:
+          KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
         uses: actions/upload-artifact@v7
         with:
-          name: AnyKernel3_KernelSU_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
+          name: AnyKernel3_${{ env.KSU_NAME }}_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
           path: ${{ steps.compress.outputs.ak3name }}
 
       - name: 提取和处理 ZRAM 模块
