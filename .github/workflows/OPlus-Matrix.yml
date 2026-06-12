@@ -209,7 +209,7 @@ jobs:
           Is_DEV_SUSFS: ${{ github.event.inputs.DEV_SUSFS_BRANCH }}
         run: |
           KSU_BRANCH="${{ env.KSU_BRANCH }}"
-          Is_DEV_SUSFS="${{ emv.Is_DEV_SUSFS }}"
+          Is_DEV_SUSFS="${{ env.Is_DEV_SUSFS }}"
           echo "### 矩阵构建的摘要" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
