@@ -587,10 +587,36 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          # 解析内核主次版本
+          
+          # 优先从步骤输出获取内核版本，其次从环境变量获取
           TKERNEL_VERSION="${{ steps.kernel_version.outputs.TKERNEL_VERSION }}"
+          if [ -z "$TKERNEL_VERSION" ]; then
+            TKERNEL_VERSION="${TKERNEL_VERSION}"
+          fi
+          
+          # 如果仍为空，尝试从Makefile直接读取（兜底方案）
+          if [ -z "$TKERNEL_VERSION" ]; then
+            TKERNEL_VERSION=$(awk '/^VERSION =/ {v=$3} /^PATCHLEVEL =/ {p=$3} /^SUBLEVEL =/ {s=$3} END {print v"."p"."s}' kernel_workspace/kernel_platform/common/Makefile 2>/dev/null || echo "")
+          fi
+          
+          # 无法获取版本时跳过检查，不阻断构建
+          if [ -z "$TKERNEL_VERSION" ]; then
+            echo "::warning title=版本检测失败::无法获取内核版本，跳过兼容性检查"
+            echo "skip=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # 解析主次版本，兼容 6.12 或 6.12.0 格式
           MAJOR=$(echo "$TKERNEL_VERSION" | cut -d. -f1)
           MINOR=$(echo "$TKERNEL_VERSION" | cut -d. -f2)
+          
+          # 验证版本号是否为有效数字
+          if ! [[ "$MAJOR" =~ ^[0-9]+$ ]] || ! [[ "$MINOR" =~ ^[0-9]+$ ]]; then
+            echo "::warning title=版本格式异常::内核版本 $TKERNEL_VERSION 格式异常，跳过兼容性检查"
+            echo "skip=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
           # 6.12及以上内核不支持KernelSU主分支
           if [ "$MAJOR" -eq 6 ] && [ "$MINOR" -ge 12 ]; then
             echo "::notice title=跳过构建::KernelSU主分支不支持6.12+内核，当前内核版本：$TKERNEL_VERSION，跳过当前设备构建"
@@ -598,6 +624,7 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
+
 
       - name: Rust版本处理
         if: steps.check_ksu_skip.outputs.skip != 'true'
