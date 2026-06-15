@@ -952,7 +952,7 @@ jobs:
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
 
       - name: 应用KernelSU补丁
-      if: steps.check_ksu_skip.outputs.skip != 'true'
+        if: steps.check_ksu_skip.outputs.skip != 'true'
         env:
           FILE: ${{ github.event.inputs.FILE }}
         run: |

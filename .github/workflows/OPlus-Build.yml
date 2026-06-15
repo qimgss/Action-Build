@@ -1631,7 +1631,7 @@ jobs:
           fi
 
       - name: 制作AnyKernel3
-      if: steps.check_ksu_skip.outputs.skip != 'true'
+        if: steps.check_ksu_skip.outputs.skip != 'true'
         run: |
           git clone https://github.com/qimgss/AnyKernel3 --depth=1
           rm -rf ./AnyKernel3/.git
