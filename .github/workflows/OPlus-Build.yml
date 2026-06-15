@@ -618,7 +618,7 @@ jobs:
           fi
 
       # 自定义内核后缀
-      - name: Custom Kernel Suffix if set
+      - name: 自定义内核后缀(如果为空)
         if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.SUFFIX != '' && github.event.inputs.SUFFIX != '-1' }}
         run: |
           cd kernel_workspace/kernel_platform
