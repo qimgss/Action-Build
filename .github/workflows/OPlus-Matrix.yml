@@ -86,11 +86,6 @@ on:
         description: "自定义内核等级欺骗(SUBLEVEL)"
         required: false
         default: ""
-      EXCLUDE_DEVICES:
-        type: string
-        description: "排除的配置文件（逗号分隔，例如：oneplus_15_Canary,oneplus_ace5_b）"
-        required: false
-        default: "oneplus_15_Canary,oneplus_15t_Canary"
       LSM_BBG:
         type: boolean
         description: "是否启用关键分区写入保护模块(BBG)？"
