@@ -24,7 +24,7 @@ on:
           - KernelSU
           - KernelSU-Next
           - SukiSU-Ultra
-          - ReSukisu
+          - ReSukiSU
       RELEASE_TYPE:
         type: choice
         description: "Release发布形式"
