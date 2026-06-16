@@ -137,7 +137,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      fail-fast: false
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -147,16 +146,6 @@ jobs:
         run: |
           DEVICES=$(grep -v '^$' .matrix/devices.txt | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
           MATRIX="{\"include\":[]}"
-          
-          # 读取排除的设备列表
-          EXCLUDE_DEVICES="${{ github.event.inputs.EXCLUDE_DEVICES }}"
-          if [[ -n "$EXCLUDE_DEVICES" ]]; then
-            echo "Excluding devices: $EXCLUDE_DEVICES"
-            # 将逗号分隔的字符串转换为数组
-            IFS=',' read -r -a EXCLUDED_ARRAY <<< "$EXCLUDE_DEVICES"
-          else
-            EXCLUDED_ARRAY=()
-          fi
 
           while IFS= read -r device; do
             SCHED="false"
@@ -167,28 +156,11 @@ jobs:
               CLEAN_DEVICE="${device%\(SCHED\)}"
               CLEAN_DEVICE="${CLEAN_DEVICE%"${CLEAN_DEVICE##*[![:space:]]}"}"
             fi
-            
-            # 检查是否在排除列表中
-            EXCLUDE="false"
-            for excluded in "${EXCLUDED_ARRAY[@]}"; do
-              # 去除空格
-              excluded=$(echo "$excluded" | xargs)
-              if [[ "$excluded" == "$CLEAN_DEVICE" || "$excluded" == "$device" ]]; then
-                EXCLUDE="true"
-                echo "Excluding device: $device (matched: $excluded)"
-                break
-              fi
-            done
-            
-            # 如果不排除，则添加到矩阵
-            if [[ "$EXCLUDE" == "false" ]]; then
-              MATRIX=$(echo "$MATRIX" | jq ".include += [{\"file\":\"$CLEAN_DEVICE\",\"sched_hmbird\":\"$SCHED\"}]")
-            fi
+
+            MATRIX=$(echo "$MATRIX" | jq ".include += [{\"file\":\"$CLEAN_DEVICE\",\"sched_hmbird\":\"$SCHED\"}]")
           done <<< "$DEVICES"
 
           echo "matrix=$(echo "$MATRIX" | jq -c .)" >> $GITHUB_OUTPUT
-          echo "Generated matrix:"
-          echo "$MATRIX" | jq .
 
   generate-summary:
     runs-on: ubuntu-latest
@@ -197,7 +169,6 @@ jobs:
         id: generate_summary
         env:
           KSU_BRANCH: ${{ github.event.inputs.KERNELSU_BRANCH }}
-          Is_DEV_SUSFS: ${{ github.event.inputs.DEV_SUSFS_BRANCH }}
         run: |
           KSU_BRANCH="${{ env.KSU_BRANCH }}"
           Is_DEV_SUSFS="${{ env.Is_DEV_SUSFS }}"
@@ -207,11 +178,7 @@ jobs:
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
           echo "| Release发布形式  | ${{ inputs.RELEASE_TYPE }} | 发布到Release的形式(或不) |" >> $GITHUB_STEP_SUMMARY
           echo "| KernelSU分支 | ${{ inputs.KERNELSU_BRANCH }} | KernelSU的分支 |" >> $GITHUB_STEP_SUMMARY
-          if [ "$KSU_BRANCH" = "KernelSU-Next" ] && [ "$IS_DEV_SUSFS" = 'true' ]; then
-              echo "| SuSFS | KSU-Next | SuSFS调用 |" >> $GITHUB_STEP_SUMMARY
-          else
-              echo "| SuSFS | $KSU_BRANCH | SuSFS调用 |" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "| SuSFS | $KSU_BRANCH | SuSFS调用 |" >> $GITHUB_STEP_SUMMARY
           echo "| KPM实现方式 | ${{ inputs.KPM }} | KPM实现方式 |" >> $GITHUB_STEP_SUMMARY
 
   build:
