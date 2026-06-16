@@ -13,18 +13,18 @@
           oneplus_ace_3v_b
           oneplus_ace3_pro_b
           oneplus_pad_pro_b
-          oneplus_ace5_b(SCHED)
+          oneplus_ace5_b
           oneplus_ace5_pro_b(SCHED)
           oneplus_13_b(SCHED)
           oneplus_13t_b(SCHED)
           oneplus_ace5_race_b
           oneplus_ace5_ultra_b(SCHED)
           oneplus_ace_6(SCHED)
-          oneplus_15_Canary(SCHED)
-          oneplus_15t_Canary(SCHED)
-          oneplus_pad_3_pro_Canary(SCHED)
-          oneplus_pad_4_Canary(SCHED)
-          oneplus_ace6_ultra_Canary(SCHED)
+          oneplus_15_Canary
+          oneplus_15t_Canary
+          oneplus_pad_3_pro_Canary
+          oneplus_pad_4_Canary
+          oneplus_ace6_ultra_Canary
           oneplus_pad_2_pro_b(SCHED)
-          oneplus_pad2_b(SCHED)
+          oneplus_pad2_b
           
