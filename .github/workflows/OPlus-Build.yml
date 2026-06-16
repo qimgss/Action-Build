@@ -19,8 +19,8 @@ on:
         options:
           - KernelSU
           - KernelSU-Next
-          - Sukisu-Ultra
-          - ReSukisu
+          - SukiSU-Ultra
+          - ReSukiSU
       FILE:
         type: choice
         description: "配置文件"
@@ -109,7 +109,7 @@ on:
         type: string
         description: "分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)"
         required: false
-        default: "builtin/qimgss/"
+        default: "builtin/qimgss/3170a48"
       DYNAMIC_REPO:
         type: string
         description: "动态清单仓库所有者"
@@ -731,6 +731,7 @@ jobs:
 
       - name: 解析KernelSU分支来源
         id: manager
+        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' }}
         run: |
           KERNELSU_BRANCH="${{ github.event.inputs.KERNELSU_BRANCH }}"
 
@@ -788,7 +789,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform"
           
       - name: 添加SukiSU Ultra
-        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.KERNELSU_BRANCH == 'Sukisu-Ultra' }}
+        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.KERNELSU_BRANCH == 'SukiSU-Ultra' }}
         run: |
           cd kernel_workspace/kernel_platform
           MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
