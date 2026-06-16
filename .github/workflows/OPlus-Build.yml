@@ -818,8 +818,8 @@ jobs:
             SHORT_HASH=${MANUAL_HASH:0:8}
           fi
 
-          KSU_VERSION_TAG=$(curl -fsSL https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest \
-            | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
+          KSU_VERSION_TAG=$(curl -fsSL --retry 3 https://api.github.com/repos/SukiSU-Ultra/SukiSU-Ultra/releases/latest \
+            | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/' || true)
           if [[ -z "$KSU_VERSION_TAG" || "$(printf '%s\n' "$KSU_VERSION_TAG" "3.1.7" | sort -V | head -n1)" != "3.1.7" ]]; then
             KSU_VERSION_TAG="3.1.7"
           fi
