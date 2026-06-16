@@ -20,11 +20,6 @@
           oneplus_ace5_race_b
           oneplus_ace5_ultra_b(SCHED)
           oneplus_ace_6(SCHED)
-          oneplus_15_Canary
-          oneplus_15t_Canary
-          oneplus_pad_3_pro_Canary
-          oneplus_pad_4_Canary
-          oneplus_ace6_ultra_Canary
           oneplus_pad_2_pro_b(SCHED)
           oneplus_pad2_b
           
