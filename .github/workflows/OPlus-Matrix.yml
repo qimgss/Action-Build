@@ -61,7 +61,7 @@ on:
         type: string
         description: "分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)"
         required: false
-        default: "builtin/qimgss/ede8a21"
+        default: "builtin/qimgss/"
       DYNAMIC_REPO:
         type: string
         description: "动态清单仓库所有者"
@@ -792,7 +792,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform"
           echo "KSU_BRANCH_VERSION=KernelSU-$KSU_VERSION" >> $GITHUB_OUTPUT
 
-      - name: 添加SukiSU Ultra
+      - name: 添加SukiSU-Ultra
         id: add_sukisu_ultra
         if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.KERNELSU_BRANCH == 'SukiSU-Ultra' }}
         run: |

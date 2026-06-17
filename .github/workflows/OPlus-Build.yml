@@ -109,7 +109,7 @@ on:
         type: string
         description: "分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)"
         required: false
-        default: "builtin/qimgss/3170a48"
+        default: "builtin/qimgss/"
       DYNAMIC_REPO:
         type: string
         description: "动态清单仓库所有者"
