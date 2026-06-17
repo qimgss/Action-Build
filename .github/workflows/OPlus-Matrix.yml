@@ -1749,7 +1749,6 @@ jobs:
       - name: 压缩 AnyKernel3
         if: steps.check_ksu_skip.outputs.skip != 'true'
         id: compress
-        if: steps.check_ksu_skip.outputs.skip != 'true'
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
         run: |
