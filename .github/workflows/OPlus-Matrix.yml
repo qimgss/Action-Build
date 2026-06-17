@@ -190,7 +190,6 @@ jobs:
     name: >
       ${{ matrix.sched_hmbird == 'true' && '[SCHED]' || '[NORMAL]' }}
       Build ${{ matrix.file }}
-      
     runs-on: ubuntu-latest
     outputs:
       KSU_BRANCH_VERSION: ${{ steps.add_ksu.outputs.KSU_BRANCH_VERSION || steps.add_ksu_next.outputs.KSU_BRANCH_VERSION || steps.add_sukisu_ultra.outputs.KSU_BRANCH_VERSION || steps.add_resukisu.outputs.KSU_BRANCH_VERSION }}
@@ -334,7 +333,6 @@ jobs:
 
           # 传递组合信息
           echo "value=${FILE_BASE}_Android${ANDROID_VERSION}" >> "$GITHUB_OUTPUT"
-          
 
       - name: 调试 显示所选输入
         run: |
@@ -594,6 +592,23 @@ jobs:
           echo "KERNEL_SHORT_VERSION=$(echo $NEW_VERSION | cut -d. -f1,2)" >> $GITHUB_ENV
           echo "KERNEL_SHORT_PATCH_VERSION=$(echo $NEW_VERSION | cut -d. -f1,2 | tr '.' '_')" >> $GITHUB_ENV
 
+      - name: Rust版本处理
+        run: |
+          cd kernel_workspace/kernel_platform
+          # 从 build.config.constants 读取 RUSTC_VERSION
+          RUSTC_VERSION=""
+          if [[ -f ./common/build.config.constants ]]; then
+            RUSTC_VERSION=$(grep '^RUSTC_VERSION=' ./common/build.config.constants | cut -d'=' -f2 || true)
+          fi
+          if [[ -n "$RUSTC_VERSION" ]]; then
+            echo "✅ RUSTC_VERSION=$RUSTC_VERSION"
+            echo "RUSTC_VERSION=$RUSTC_VERSION" >> $GITHUB_ENV
+            echo "ENABLE_RUST=true" >> $GITHUB_ENV
+          else
+            echo "✅ RUSTC_VERSION 未找到，Rust 编译已禁用"
+            echo "ENABLE_RUST=false" >> $GITHUB_ENV
+          fi
+
       - name: 检查KernelSU兼容性并跳过不支持的版本
         id: check_ksu_skip
         run: |
@@ -613,25 +628,6 @@ jobs:
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Rust版本处理
-        if: steps.check_ksu_skip.outputs.skip != 'true'
-        run: |
-          cd kernel_workspace/kernel_platform
-          # 从 build.config.constants 读取 RUSTC_VERSION
-          RUSTC_VERSION=""
-          if [[ -f ./common/build.config.constants ]]; then
-            RUSTC_VERSION=$(grep '^RUSTC_VERSION=' ./common/build.config.constants | cut -d'=' -f2 || true)
-          fi
-          if [[ -n "$RUSTC_VERSION" ]]; then
-            echo "✅ RUSTC_VERSION=$RUSTC_VERSION"
-            echo "RUSTC_VERSION=$RUSTC_VERSION" >> $GITHUB_ENV
-            echo "ENABLE_RUST=true" >> $GITHUB_ENV
-          else
-            echo "✅ RUSTC_VERSION 未找到，Rust 编译已禁用"
-            echo "ENABLE_RUST=false" >> $GITHUB_ENV
-          fi
-          
 
       # 自定义内核后缀
       - name: 自定义内核后缀(如果设置)
@@ -879,32 +875,30 @@ jobs:
           echo "KSU_BRANCH_VERSION=SukiSU-Ultra-$KSU_VERSION" >> $GITHUB_OUTPUT
 
       - name: 添加ReSukiSU
-        id: add_resukisu
         if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.KERNELSU_BRANCH == 'ReSukiSU' }}
+        id: add_resukisu
         run: |
+          echo "切换工作目录..."
           cd kernel_workspace/kernel_platform
           MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
           KSU_META="${{ github.event.inputs.KSU_META }}"
-
-          # 必须包含两个分隔符（至少三个字段）
-          if [[ "$(grep -o '/' <<< "$KSU_META" | wc -l)" -lt 2 ]]; then
-            echo "错误: KSU_META 参数缺少必要的分隔符 '/'，格式应为: 分支名/自定义标识(可省略)/提交hash(可省略)"
-            exit 10
-          fi
-
-          # 解析字段：分支 / 自定义标识 / 手动 hash
+          
+          echo "正在解析KSU_META..."
           IFS='/' read -r BRANCH_NAME KSU_CUSTOM_TAG MANUAL_HASH <<< "$KSU_META"
 
-          echo "分支名: $BRANCH_NAME"
-          [[ -n "$KSU_CUSTOM_TAG" ]] && echo "自定义版本标识: $KSU_CUSTOM_TAG" || echo "自定义版本标识: 未启用"
-          [[ -n "$MANUAL_HASH" ]] && echo "手动指定 hash: $MANUAL_HASH" || echo "手动指定 hash: 未启用"
+          echo "分支名: ${BRANCH_NAME:-builtin}"
+          echo "自定义标识: ${KSU_CUSTOM_TAG:-}"
+          echo "手动 hash: ${MANUAL_HASH:-}"
+            
+          echo "setup.sh"
+          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
 
-          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/${MANAGER_BRANCH}/kernel/setup.sh" | bash -s "$BRANCH_NAME"
           cd ./KernelSU
 
           if [[ -n "$KSU_CUSTOM_TAG" ]]; then
-            echo "KSU_CUSTOM_TAG=$KSU_CUSTOM_TAG" >> "$GITHUB_ENV"
+            echo "KSU_CUSTOM_TAG=$KSU_CUSTOM_TAG" >> $GITHUB_ENV
           fi
+
           if [[ -n "$MANUAL_HASH" ]]; then
             git fetch origin "$BRANCH_NAME" --depth=50
             git checkout "$MANUAL_HASH"
@@ -912,7 +906,6 @@ jobs:
 
           KSU_VERSION=$(expr $(git rev-list --count "$MANAGER_BRANCH" 2>/dev/null || echo 13000) + 30700)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-          echo "KSU_BRANCH_VERSION=ReSukiSU-$KSU_VERSION" >> $GITHUB_OUTPUT
 
       - name: 应用KernelSU补丁
         if: steps.check_ksu_skip.outputs.skip != 'true'
@@ -1450,7 +1443,7 @@ jobs:
 
       - name: 使用 Make 构建内核
         if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.BUILD_METHOD == 'MAKE' }}
-        id: make_build
+        id: fast_build
         run: |
           KERNEL_VERSION="${{ env.KERNEL_VERSION }}"
           cd kernel_workspace/kernel_platform
@@ -1663,7 +1656,7 @@ jobs:
           fi
 
       - name: 制作AnyKernel3
-        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' }}
+        if: steps.check_ksu_skip.outputs.skip != 'true'
         run: |
           git clone https://github.com/qimgss/AnyKernel3 --depth=1
           rm -rf ./AnyKernel3/.git
@@ -1745,13 +1738,14 @@ jobs:
           cp ksu_module_susfs_1.5.2+_Release.zip ./AnyKernel3/
 
       - name: 设置zip后缀
+        if: steps.check_ksu_skip.outputs.skip != 'true'
         id: suffix
         run: |
           echo "value=${{ env.ZRAM_ALGO_U && format('_{0}', env.ZRAM_ALGO_U) || '' }}${{ github.event.inputs.KPM == 'KPM' && '_KPM' || github.event.inputs.KPM == 'KPN' && '_KPN' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && '_BBG' || '' }}_ILH${{ env.SCHED_HMBIRD== 'true' && '_HMBIRD' || '' }}${{ github.event.inputs.DROID_SPACES== 'true' && '_DS' || '' }}${{ github.event.inputs.RE_KERNEL == 'true' && '_REKER' || '' }}" >> $GITHUB_OUTPUT
       
       - name: 压缩 AnyKernel3
-        id: compress
         if: steps.check_ksu_skip.outputs.skip != 'true'
+        id: compress
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
         run: |
@@ -1824,7 +1818,7 @@ jobs:
           fi
 
       - name: 上传 ZRAM 模块
-        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false' }}
+        if: steps.check_ksu_skip.outputs.skip != 'true' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         uses: actions/upload-artifact@v7
         with:
           name: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
@@ -1858,10 +1852,10 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.BUILD_METHOD == 'Make' && 'alpha' || 'beta' }}-16.8
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.8
 
       - name: 保存 ThinLTO 缓存
-        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.BUILD_METHOD == 'Make' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
+        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.FAST_BUILD == 'true' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v5
         with:
           path: ${{ github.workspace }}/kernel_workspace/.thinlto-cache
@@ -2042,7 +2036,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag_info.outputs.RELEASE_TAG }}
+          tag_name: ${{ github.event.inputs.KERNELSU_BRANCH }}
           name: ${{ steps.tag_info.outputs.RELEASE_TITLE }}
           body_path: ./release_body.md
           draft: false
