@@ -113,41 +113,41 @@ jobs:
           
           # 创建 Release（使用临时文件传递body避免shell转义问题）
           python3 -c "
-import json, urllib.request, os
+            import json, urllib.request, os
 
-token = os.environ['GH_TOKEN']
-repo = '${{ github.repository }}'
-tag = '$TAG_NAME'
-title = '$RELEASE_TITLE'
+            token = os.environ['GH_TOKEN']
+            repo = '${{ github.repository }}'
+            tag = '$TAG_NAME'
+            title = '$RELEASE_TITLE'
 
-with open('/tmp/release_body.txt', 'r') as f:
-    body = f.read()
+            with open('/tmp/release_body.txt', 'r') as f:
+                body = f.read()
 
-data = {
-    'tag_name': tag,
-    'target_commitish': '${{ github.sha }}',
-    'name': title,
-    'body': body,
-    'draft': False,
-    'prerelease': False
-}
+            data = {
+                'tag_name': tag,
+                'target_commitish': '${{ github.sha }}',
+                'name': title,
+                'body': body,
+                'draft': False,
+                'prerelease': False
+            }
 
-req = urllib.request.Request(
-    f'https://api.github.com/repos/{repo}/releases',
-    data=json.dumps(data).encode(),
-    headers={
-        'Accept': 'application/vnd.github+json',
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json'
-    },
-    method='POST'
-)
+            req = urllib.request.Request(
+                f'https://api.github.com/repos/{repo}/releases',
+                data=json.dumps(data).encode(),
+                headers={
+                    'Accept': 'application/vnd.github+json',
+                    'Authorization': f'Bearer {token}',
+                    'Content-Type': 'application/json'
+                },
+                method='POST'
+            )
 
-resp = urllib.request.urlopen(req)
-result = json.loads(resp.read())
-print(f'release_id={result[\"id\"]}')
-print(f'Created release ID: {result[\"id\"]}')
-" >> $GITHUB_OUTPUT
+            resp = urllib.request.urlopen(req)
+            result = json.loads(resp.read())
+            print(f'release_id={result[\"id\"]}')
+            print(f'Created release ID: {result[\"id\"]}')
+          " >> $GITHUB_OUTPUT
           
       - name: Get workflow runs
         id: workflow_runs
