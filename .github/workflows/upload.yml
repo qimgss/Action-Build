@@ -7,49 +7,54 @@ on:
         description: '要上传的工作流名称'
         required: true
         type: string
+      include_failed_cancelled:
+        description: '是否包含失败/取消的工作流（勾选=包含，不勾选=仅成功）'
+        required: false
+        default: false
+        type: boolean
       artifact_count:
-        description: '最近成功运行的次数（默认为1）'
+        description: '最近运行的工作流数量（包括失败/取消的）'
         required: false
         default: '1'
         type: string
-      branch:
-        description: '目标分支（默认为当前分支）'
+      branch_name:
+        description: '分支名称（可选）'
         required: false
         type: string
 
 jobs:
-  upload-to-release:
+  process-release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Get current branch
-        id: get_branch
+      - name: Setup variables
+        id: vars
         run: |
-          if [ -n "${{ github.event.inputs.branch }}" ]; then
-            BRANCH="${{ github.event.inputs.branch }}"
+          # 确定分支名
+          if [ -n "${{ inputs.branch_name }}" ]; then
+            BRANCH="${{ inputs.branch_name }}"
           else
             BRANCH="${GITHUB_REF#refs/heads/}"
           fi
+          
+          # 生成UTC时间
+          UTC_TIME=$(TZ=UTC date "+%a %b %d %H:%M:%S UTC %Y")
+          RELEASE_NAME="${BRANCH} - ${UTC_TIME}"
+          
+          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
           echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
           
-      - name: Generate release name
-        id: release_name
-        run: |
-          UTC_TIME=$(TZ=UTC date "+%a %b %d %H:%M:%S UTC %Y")
-          RELEASE_NAME="${{ steps.get_branch.outputs.branch }} - $UTC_TIME"
-          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
-          
       - name: Get workflow runs
-        id: get_workflow_runs
+        id: workflow_runs
         uses: actions/github-script@v7
         with:
           script: |
-            const { workflow_name, artifact_count } = context.payload.inputs;
+            const { workflow_name, artifact_count, include_failed_cancelled } = context.payload.inputs;
             const count = parseInt(artifact_count) || 1;
             
-            // 获取工作流ID
+            // 查找工作流
             const workflows = await github.rest.actions.listRepoWorkflows({
               owner: context.repo.owner,
               repo: context.repo.repo
@@ -60,91 +65,112 @@ jobs:
             );
             
             if (!targetWorkflow) {
-              throw new Error(`Workflow "${workflow_name}" not found`);
+              core.setFailed(`Workflow "${workflow_name}" not found`);
+              return [];
             }
             
-            // 获取最近成功的工作流运行
+            // 根据是否包含失败/取消来决定status参数
+            let statusParam = {};
+            if (include_failed_cancelled !== 'true') {
+              statusParam.status = 'success';
+            }
+            
+            // 获取工作流运行记录
             const runs = await github.rest.actions.listWorkflowRuns({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: targetWorkflow.id,
-              status: 'success',
-              per_page: count
+              per_page: count,
+              ...statusParam
             });
             
-            const runIds = runs.data.workflow_runs.map(run => run.id);
-            console.log(`Found workflow runs: ${runIds.join(', ')}`);
+            const runData = runs.data.workflow_runs.map(run => ({
+              id: run.id,
+              run_number: run.run_number,
+              conclusion: run.conclusion,
+              status: run.status,
+              created_at: run.created_at
+            }));
             
-            return runIds;
+            console.log(`Found ${runData.length} workflow runs`);
+            runData.forEach(run => {
+              console.log(`  Run #${run.run_number}: ${run.conclusion || run.status}`);
+            });
             
-      - name: Create Release
+            core.setOutput('runs', JSON.stringify(runData));
+            return runData;
+            
+      - name: Create release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          name: ${{ steps.release_name.outputs.release_name }}
+          name: ${{ steps.vars.outputs.release_name }}
           tag_name: release-${{ github.run_id }}
-          generate_release_notes: false
+          generate_release_notes: true
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-      - name: Download and upload artifacts
-        uses: actions/github-script@v7
+      - name: Download and upload artifacts from each run
         env:
+          WORKFLOW_NAME: ${{ inputs.workflow_name }}
           RELEASE_ID: ${{ steps.create_release.outputs.id }}
-        with:
-          script: |
-            const { workflow_name, artifact_count } = context.payload.inputs;
-            const count = parseInt(artifact_count) || 1;
-            const releaseId = process.env.RELEASE_ID;
+          INCLUDE_FAILED_CANCELLED: ${{ inputs.include_failed_cancelled }}
+        run: |
+          RUNS_JSON='${{ steps.workflow_runs.outputs.runs }}'
+          RUNS=$(echo "$RUNS_JSON" | jq -c '.[]')
+          
+          echo "$RUNS" | while read -r RUN; do
+            RUN_ID=$(echo "$RUN" | jq -r '.id')
+            RUN_NUMBER=$(echo "$RUN" | jq -r '.run_number')
+            CONCLUSION=$(echo "$RUN" | jq -r '.conclusion')
+            STATUS=$(echo "$RUN" | jq -r '.status')
             
-            // 获取工作流ID
-            const workflows = await github.rest.actions.listRepoWorkflows({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
+            echo "Processing workflow run #$RUN_NUMBER (ID: $RUN_ID) - Status: $CONCLUSION/$STATUS"
             
-            const targetWorkflow = workflows.data.workflows.find(
-              w => w.name === workflow_name
-            );
+            # 下载所有artifacts
+            ARTIFACTS_RESPONSE=$(curl -s -L \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts")
             
-            // 获取最近成功的工作流运行
-            const runs = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: targetWorkflow.id,
-              status: 'success',
-              per_page: count
-            });
+            ARTIFACT_COUNT=$(echo "$ARTIFACTS_RESPONSE" | jq '.total_count')
+            echo "  Found $ARTIFACT_COUNT artifacts"
             
-            for (const run of runs.data.workflow_runs) {
-              // 获取该运行的所有artifacts
-              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: run.id
-              });
+            if [ "$ARTIFACT_COUNT" -gt 0 ]; then
+              ARTIFACTS=$(echo "$ARTIFACTS_RESPONSE" | jq -c '.artifacts[]')
               
-              for (const artifact of artifacts.data.artifacts) {
-                // 下载artifact
-                const download = await github.rest.actions.downloadArtifact({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  artifact_id: artifact.id,
-                  archive_format: 'zip'
-                });
+              echo "$ARTIFACTS" | while read -r ARTIFACT; do
+                ARTIFACT_ID=$(echo "$ARTIFACT" | jq -r '.id')
+                ARTIFACT_NAME=$(echo "$ARTIFACT" | jq -r '.name')
+                DOWNLOAD_URL=$(echo "$ARTIFACT" | jq -r '.archive_download_url')
                 
-                // 上传到release
-                const artifactName = `${workflow_name}_run${run.id}_${artifact.name}.zip`;
-                await github.rest.repos.uploadReleaseAsset({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  release_id: releaseId,
-                  name: artifactName,
-                  data: download.data
-                });
+                echo "  Downloading artifact: $ARTIFACT_NAME (ID: $ARTIFACT_ID)"
                 
-                console.log(`Uploaded ${artifactName} to release`);
-              }
-            }
+                # 下载artifact
+                curl -s -L \
+                  -H "Accept: application/vnd.github+json" \
+                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                  -H "X-GitHub-Api-Version: 2022-11-28" \
+                  -o "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
+                  "$DOWNLOAD_URL"
+                
+                # 上传到release
+                echo "  Uploading to release..."
+                UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${WORKFLOW_NAME}_run${RUN_NUMBER}_${ARTIFACT_NAME}.zip"
+                
+                curl -s -X POST \
+                  -H "Accept: application/vnd.github+json" \
+                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                  -H "Content-Type: application/octet-stream" \
+                  --data-binary @"/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
+                  "$UPLOAD_URL"
+                
+                echo "  Successfully uploaded ${ARTIFACT_NAME}_run${RUN_NUMBER}.zip"
+              done
+            else
+              echo "  No artifacts found for this run"
+            fi
+          done
