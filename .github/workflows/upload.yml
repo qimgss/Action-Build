@@ -22,6 +22,10 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   process-release:
     runs-on: ubuntu-latest
@@ -45,6 +49,35 @@ jobs:
           
           echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
           echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+          echo "tag_name=release-$(date +%s)" >> $GITHUB_OUTPUT
+          
+      - name: Create Release via API
+        id: create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ steps.vars.outputs.tag_name }}"
+          RELEASE_NAME="${{ steps.vars.outputs.release_name }}"
+          
+          # 创建 Release
+          RESPONSE=$(curl -s -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            -d "{
+              \"tag_name\": \"${TAG_NAME}\",
+              \"target_commitish\": \"${{ github.sha }}\",
+              \"name\": \"${RELEASE_NAME}\",
+              \"body\": \"Auto-generated release from workflow ${{ inputs.workflow_name }}\",
+              \"draft\": false,
+              \"prerelease\": false,
+              \"generate_release_notes\": false
+            }")
+          
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          echo "release_id=${RELEASE_ID}" >> $GITHUB_OUTPUT
+          echo "Created release ID: ${RELEASE_ID}"
           
       - name: Get workflow runs
         id: workflow_runs
@@ -69,20 +102,21 @@ jobs:
               return [];
             }
             
-            // 根据是否包含失败/取消来决定status参数
-            let statusParam = {};
-            if (include_failed_cancelled !== 'true') {
-              statusParam.status = 'success';
-            }
-            
-            // 获取工作流运行记录
-            const runs = await github.rest.actions.listWorkflowRuns({
+            // 构建请求参数
+            const params = {
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: targetWorkflow.id,
-              per_page: count,
-              ...statusParam
-            });
+              per_page: count
+            };
+            
+            // 如果不包含失败/取消，只获取成功的
+            if (include_failed_cancelled !== 'true') {
+              params.status = 'success';
+            }
+            
+            // 获取工作流运行记录
+            const runs = await github.rest.actions.listWorkflowRuns(params);
             
             const runData = runs.data.workflow_runs.map(run => ({
               id: run.id,
@@ -100,23 +134,11 @@ jobs:
             core.setOutput('runs', JSON.stringify(runData));
             return runData;
             
-      - name: Create release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: ${{ steps.vars.outputs.release_name }}
-          tag_name: release-${{ github.run_id }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
+      - name: Download and upload artifacts
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Download and upload artifacts from each run
-        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
           WORKFLOW_NAME: ${{ inputs.workflow_name }}
-          RELEASE_ID: ${{ steps.create_release.outputs.id }}
-          INCLUDE_FAILED_CANCELLED: ${{ inputs.include_failed_cancelled }}
         run: |
           RUNS_JSON='${{ steps.workflow_runs.outputs.runs }}'
           RUNS=$(echo "$RUNS_JSON" | jq -c '.[]')
@@ -129,10 +151,10 @@ jobs:
             
             echo "Processing workflow run #$RUN_NUMBER (ID: $RUN_ID) - Status: $CONCLUSION/$STATUS"
             
-            # 下载所有artifacts
-            ARTIFACTS_RESPONSE=$(curl -s -L \
+            # 获取该运行的artifacts列表
+            ARTIFACTS_RESPONSE=$(curl -s \
               -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Authorization: Bearer $GH_TOKEN" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
               "https://api.github.com/repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts")
             
@@ -149,28 +171,72 @@ jobs:
                 
                 echo "  Downloading artifact: $ARTIFACT_NAME (ID: $ARTIFACT_ID)"
                 
-                # 下载artifact
-                curl -s -L \
+                # 下载artifact（注意：需要先重定向获取实际的下载链接）
+                LOCATION=$(curl -s -I \
                   -H "Accept: application/vnd.github+json" \
-                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                  -H "Authorization: Bearer $GH_TOKEN" \
                   -H "X-GitHub-Api-Version: 2022-11-28" \
-                  -o "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
-                  "$DOWNLOAD_URL"
+                  "$DOWNLOAD_URL" | grep -i "^location:" | cut -d' ' -f2 | tr -d '\r\n')
                 
-                # 上传到release
-                echo "  Uploading to release..."
-                UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=${WORKFLOW_NAME}_run${RUN_NUMBER}_${ARTIFACT_NAME}.zip"
+                if [ -z "$LOCATION" ]; then
+                  # 如果没有重定向，直接下载
+                  curl -s -L \
+                    -H "Authorization: Bearer $GH_TOKEN" \
+                    -o "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
+                    "$DOWNLOAD_URL"
+                else
+                  # 使用重定向URL下载
+                  curl -s -L \
+                    -o "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
+                    "$LOCATION"
+                fi
                 
-                curl -s -X POST \
-                  -H "Accept: application/vnd.github+json" \
-                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                  -H "Content-Type: application/octet-stream" \
-                  --data-binary @"/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
-                  "$UPLOAD_URL"
+                # 检查文件大小
+                FILE_SIZE=$(stat -c%s "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" 2>/dev/null || stat -f%z "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" 2>/dev/null)
+                echo "  Downloaded file size: $FILE_SIZE bytes"
                 
-                echo "  Successfully uploaded ${ARTIFACT_NAME}_run${RUN_NUMBER}.zip"
+                if [ "$FILE_SIZE" -gt 0 ]; then
+                  # 上传到release
+                  ASSET_NAME="${WORKFLOW_NAME}_run${RUN_NUMBER}_${ARTIFACT_NAME}.zip"
+                  echo "  Uploading asset: $ASSET_NAME"
+                  
+                  UPLOAD_RESPONSE=$(curl -s -X POST \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "Authorization: Bearer $GH_TOKEN" \
+                    -H "Content-Type: application/octet-stream" \
+                    --data-binary @"/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
+                    "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=${ASSET_NAME}")
+                  
+                  UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | jq -r '.state // .message // "unknown"')
+                  echo "  Upload status: $UPLOAD_STATUS"
+                else
+                  echo "  Warning: Downloaded file is empty, skipping upload"
+                fi
+                
+                # 清理临时文件
+                rm -f "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip"
               done
             else
               echo "  No artifacts found for this run"
             fi
           done
+          
+      - name: Verify release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_ID=${{ steps.create_release.outputs.release_id }}
+          
+          # 验证release是否创建成功
+          RELEASE_INFO=$(curl -s \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}")
+          
+          RELEASE_NAME=$(echo "$RELEASE_INFO" | jq -r '.name')
+          ASSETS_COUNT=$(echo "$RELEASE_INFO" | jq '.assets | length')
+          
+          echo "✅ Release created successfully!"
+          echo "📦 Release Name: $RELEASE_NAME"
+          echo "🎯 Assets uploaded: $ASSETS_COUNT"
