@@ -2003,8 +2003,6 @@ jobs:
           # 内核构建配置详情
 
           ## 构建信息
-          - **Android 版本**: `${{ needs.build.outputs.ANDROID_VERSION }}`
-          - **内核版本**: `${{ needs.build.outputs.TKERNEL_VERSION }}`
           - **KernelSU 版本**: `${{ needs.build.outputs.KSU_BRANCH_VERSION }}`
           - **构建时间**: `${{ env.KBUILD_BUILD_TIMESTAMP }}`
           - **自定义后缀**: `${{ github.event.inputs.SUFFIX }}`
@@ -2041,7 +2039,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag_info.outputs.RELEASE_TAG }}
+          tag_name: ${{ github.event.inputs.KERNELSU_BRANCH }}
           name: ${{ steps.tag_info.outputs.RELEASE_TITLE }}
           body_path: ./release_body.md
           draft: false
