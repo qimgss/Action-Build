@@ -1,0 +1,150 @@
+name: Upload Artifacts to Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_name:
+        description: '要上传的工作流名称'
+        required: true
+        type: string
+      artifact_count:
+        description: '最近成功运行的次数（默认为1）'
+        required: false
+        default: '1'
+        type: string
+      branch:
+        description: '目标分支（默认为当前分支）'
+        required: false
+        type: string
+
+jobs:
+  upload-to-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Get current branch
+        id: get_branch
+        run: |
+          if [ -n "${{ github.event.inputs.branch }}" ]; then
+            BRANCH="${{ github.event.inputs.branch }}"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+          fi
+          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+          
+      - name: Generate release name
+        id: release_name
+        run: |
+          UTC_TIME=$(TZ=UTC date "+%a %b %d %H:%M:%S UTC %Y")
+          RELEASE_NAME="${{ steps.get_branch.outputs.branch }} - $UTC_TIME"
+          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+          
+      - name: Get workflow runs
+        id: get_workflow_runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { workflow_name, artifact_count } = context.payload.inputs;
+            const count = parseInt(artifact_count) || 1;
+            
+            // 获取工作流ID
+            const workflows = await github.rest.actions.listRepoWorkflows({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            const targetWorkflow = workflows.data.workflows.find(
+              w => w.name === workflow_name
+            );
+            
+            if (!targetWorkflow) {
+              throw new Error(`Workflow "${workflow_name}" not found`);
+            }
+            
+            // 获取最近成功的工作流运行
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: targetWorkflow.id,
+              status: 'success',
+              per_page: count
+            });
+            
+            const runIds = runs.data.workflow_runs.map(run => run.id);
+            console.log(`Found workflow runs: ${runIds.join(', ')}`);
+            
+            return runIds;
+            
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ steps.release_name.outputs.release_name }}
+          tag_name: release-${{ github.run_id }}
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Download and upload artifacts
+        uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ steps.create_release.outputs.id }}
+        with:
+          script: |
+            const { workflow_name, artifact_count } = context.payload.inputs;
+            const count = parseInt(artifact_count) || 1;
+            const releaseId = process.env.RELEASE_ID;
+            
+            // 获取工作流ID
+            const workflows = await github.rest.actions.listRepoWorkflows({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            const targetWorkflow = workflows.data.workflows.find(
+              w => w.name === workflow_name
+            );
+            
+            // 获取最近成功的工作流运行
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: targetWorkflow.id,
+              status: 'success',
+              per_page: count
+            });
+            
+            for (const run of runs.data.workflow_runs) {
+              // 获取该运行的所有artifacts
+              const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id
+              });
+              
+              for (const artifact of artifacts.data.artifacts) {
+                // 下载artifact
+                const download = await github.rest.actions.downloadArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                  archive_format: 'zip'
+                });
+                
+                // 上传到release
+                const artifactName = `${workflow_name}_run${run.id}_${artifact.name}.zip`;
+                await github.rest.repos.uploadReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: releaseId,
+                  name: artifactName,
+                  data: download.data
+                });
+                
+                console.log(`Uploaded ${artifactName} to release`);
+              }
+            }
