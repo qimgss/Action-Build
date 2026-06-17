@@ -875,32 +875,28 @@ jobs:
           echo "KSU_BRANCH_VERSION=SukiSU-Ultra-$KSU_VERSION" >> $GITHUB_OUTPUT
 
       - name: 添加ReSukiSU
-        id: add_resukisu
         if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.KERNELSU_BRANCH == 'ReSukiSU' }}
+        id: add_resukisu
         run: |
           cd kernel_workspace/kernel_platform
           MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
           KSU_META="${{ github.event.inputs.KSU_META }}"
 
-          COUNT=$(grep -o '/' <<< "$KSU_META" | wc -l | tr -d '[:space:]')
-          if (( COUNT < 2 )); then
-            echo "错误: KSU_META 参数格式错误"
-            exit 10
-          fi
-
-          # 解析字段：分支 / 自定义标识 / 手动 hash
           IFS='/' read -r BRANCH_NAME KSU_CUSTOM_TAG MANUAL_HASH <<< "$KSU_META"
 
-          echo "分支名: $BRANCH_NAME"
-          [[ -n "$KSU_CUSTOM_TAG" ]] && echo "自定义版本标识: $KSU_CUSTOM_TAG" || echo "自定义版本标识: 未启用"
-          [[ -n "$MANUAL_HASH" ]] && echo "手动指定 hash: $MANUAL_HASH" || echo "手动指定 hash: 未启用"
+          echo "分支名: ${BRANCH_NAME:-builtin}"
+          echo "自定义标识: ${KSU_CUSTOM_TAG:-}"
+          echo "手动 hash: ${MANUAL_HASH:-}"
 
-          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/${MANAGER_BRANCH}/kernel/setup.sh" | bash -s "$BRANCH_NAME"
+          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/${MANAGER_BRANCH}/kernel/setup.sh" \
+            | bash -s "${BRANCH_NAME:-builtin}"
+
           cd ./KernelSU
 
           if [[ -n "$KSU_CUSTOM_TAG" ]]; then
-            echo "KSU_CUSTOM_TAG=$KSU_CUSTOM_TAG" >> "$GITHUB_ENV"
+            echo "KSU_CUSTOM_TAG=$KSU_CUSTOM_TAG" >> $GITHUB_ENV
           fi
+
           if [[ -n "$MANUAL_HASH" ]]; then
             git fetch origin "$BRANCH_NAME" --depth=50
             git checkout "$MANUAL_HASH"
@@ -908,7 +904,6 @@ jobs:
 
           KSU_VERSION=$(expr $(git rev-list --count "$MANAGER_BRANCH" 2>/dev/null || echo 13000) + 30700)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-          echo "KSU_BRANCH_VERSION=ReSukiSU-$KSU_VERSION" >> $GITHUB_OUTPUT
 
       - name: 应用KernelSU补丁
         if: steps.check_ksu_skip.outputs.skip != 'true'
