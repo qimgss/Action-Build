@@ -1,4 +1,4 @@
-name: Upload Artifacts to Release
+name: 上传Artifacts到Release
 
 on:
   workflow_dispatch:
@@ -20,6 +20,50 @@ on:
       branch_name:
         description: '分支名称（可选）'
         required: false
+        type: string
+      release_title:
+        description: 'Release标题'
+        required: true
+        type: string
+      release_body:
+        description: 'Release描述（支持多行，使用 \n 换行）'
+        required: true
+        type: string
+      release_tag:
+        description: 'Tag名称'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      workflow_name:
+        description: '要上传的工作流名称'
+        required: true
+        type: string
+      include_failed_cancelled:
+        description: '是否包含失败/取消的工作流（勾选=包含，不勾选=仅成功）'
+        required: false
+        default: false
+        type: boolean
+      artifact_count:
+        description: '最近运行的工作流数量（包括失败/取消的）'
+        required: false
+        default: '1'
+        type: string
+      branch_name:
+        description: '分支名称'
+        required: true
+        type: string
+      release_title:
+        description: 'Release标题'
+        required: true
+        type: string
+      release_body:
+        description: 'Release描述（支持多行，使用 \n 换行）'
+        required: true
+        type: string
+      release_tag:
+        description: 'Tag名称'
+        required: true
         type: string
 
 permissions:
@@ -43,41 +87,67 @@ jobs:
             BRANCH="${GITHUB_REF#refs/heads/}"
           fi
           
-          # 生成UTC时间
-          UTC_TIME=$(TZ=UTC date "+%a %b %d %H:%M:%S UTC %Y")
-          RELEASE_NAME="${BRANCH} - ${UTC_TIME}"
-          
-          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
           echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
-          echo "tag_name=release-$(date +%s)" >> $GITHUB_OUTPUT
+          
+      - name: Prepare release body (handle multiline)
+        id: prepare_body
+        env:
+          RAW_BODY: ${{ inputs.release_body }}
+        run: |
+          # 将 \n 替换为真正的换行符，并写入临时文件
+          echo -e "$RAW_BODY" > /tmp/release_body.txt
+          echo "Body written to temp file"
           
       - name: Create Release via API
         id: create_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="${{ steps.vars.outputs.tag_name }}"
-          RELEASE_NAME="${{ steps.vars.outputs.release_name }}"
+          TAG_NAME="${{ inputs.release_tag }}"
+          RELEASE_TITLE="${{ inputs.release_title }}"
           
-          # 创建 Release
-          RESPONSE=$(curl -s -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${{ github.repository }}/releases" \
-            -d "{
-              \"tag_name\": \"${TAG_NAME}\",
-              \"target_commitish\": \"${{ github.sha }}\",
-              \"name\": \"${RELEASE_NAME}\",
-              \"body\": \"Auto-generated release from workflow ${{ inputs.workflow_name }}\",
-              \"draft\": false,
-              \"prerelease\": false,
-              \"generate_release_notes\": false
-            }")
+          # 读取多行body内容并转义为JSON字符串
+          BODY_CONTENT=$(cat /tmp/release_body.txt | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
           
-          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
-          echo "release_id=${RELEASE_ID}" >> $GITHUB_OUTPUT
-          echo "Created release ID: ${RELEASE_ID}"
+          echo "Creating release with tag: $TAG_NAME"
+          
+          # 创建 Release（使用临时文件传递body避免shell转义问题）
+          python3 -c "
+import json, urllib.request, os
+
+token = os.environ['GH_TOKEN']
+repo = '${{ github.repository }}'
+tag = '$TAG_NAME'
+title = '$RELEASE_TITLE'
+
+with open('/tmp/release_body.txt', 'r') as f:
+    body = f.read()
+
+data = {
+    'tag_name': tag,
+    'target_commitish': '${{ github.sha }}',
+    'name': title,
+    'body': body,
+    'draft': False,
+    'prerelease': False
+}
+
+req = urllib.request.Request(
+    f'https://api.github.com/repos/{repo}/releases',
+    data=json.dumps(data).encode(),
+    headers={
+        'Accept': 'application/vnd.github+json',
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+    },
+    method='POST'
+)
+
+resp = urllib.request.urlopen(req)
+result = json.loads(resp.read())
+print(f'release_id={result[\"id\"]}')
+print(f'Created release ID: {result[\"id\"]}')
+" >> $GITHUB_OUTPUT
           
       - name: Get workflow runs
         id: workflow_runs
@@ -134,11 +204,10 @@ jobs:
             core.setOutput('runs', JSON.stringify(runData));
             return runData;
             
-      - name: Download and upload artifacts
+      - name: Download, extract and upload artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ steps.create_release.outputs.release_id }}
-          WORKFLOW_NAME: ${{ inputs.workflow_name }}
         run: |
           RUNS_JSON='${{ steps.workflow_runs.outputs.runs }}'
           RUNS=$(echo "$RUNS_JSON" | jq -c '.[]')
@@ -171,50 +240,52 @@ jobs:
                 
                 echo "  Downloading artifact: $ARTIFACT_NAME (ID: $ARTIFACT_ID)"
                 
-                # 下载artifact（注意：需要先重定向获取实际的下载链接）
-                LOCATION=$(curl -s -I \
-                  -H "Accept: application/vnd.github+json" \
-                  -H "Authorization: Bearer $GH_TOKEN" \
-                  -H "X-GitHub-Api-Version: 2022-11-28" \
-                  "$DOWNLOAD_URL" | grep -i "^location:" | cut -d' ' -f2 | tr -d '\r\n')
+                # 创建临时目录
+                TMP_DIR="/tmp/extract_${ARTIFACT_NAME}_run${RUN_NUMBER}"
+                mkdir -p "$TMP_DIR"
                 
-                if [ -z "$LOCATION" ]; then
-                  # 如果没有重定向，直接下载
-                  curl -s -L \
-                    -H "Authorization: Bearer $GH_TOKEN" \
-                    -o "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
-                    "$DOWNLOAD_URL"
-                else
-                  # 使用重定向URL下载
-                  curl -s -L \
-                    -o "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
-                    "$LOCATION"
-                fi
+                # 下载artifact zip
+                curl -s -L \
+                  -H "Authorization: Bearer $GH_TOKEN" \
+                  -o "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
+                  "$DOWNLOAD_URL"
                 
                 # 检查文件大小
                 FILE_SIZE=$(stat -c%s "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" 2>/dev/null || stat -f%z "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" 2>/dev/null)
-                echo "  Downloaded file size: $FILE_SIZE bytes"
+                echo "  Downloaded zip size: $FILE_SIZE bytes"
                 
                 if [ "$FILE_SIZE" -gt 0 ]; then
-                  # 上传到release
-                  ASSET_NAME="${WORKFLOW_NAME}_run${RUN_NUMBER}_${ARTIFACT_NAME}.zip"
-                  echo "  Uploading asset: $ASSET_NAME"
+                  # 解压zip到临时目录
+                  echo "  Extracting zip..."
+                  unzip -o "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" -d "$TMP_DIR"
                   
-                  UPLOAD_RESPONSE=$(curl -s -X POST \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer $GH_TOKEN" \
-                    -H "Content-Type: application/octet-stream" \
-                    --data-binary @"/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip" \
-                    "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=${ASSET_NAME}")
+                  # 遍历解压后的文件并逐个上传
+                  find "$TMP_DIR" -type f | while read -r FILE_PATH; do
+                    RELATIVE_PATH="${FILE_PATH#$TMP_DIR/}"
+                    
+                    # 保持目录结构作为文件名前缀
+                    FLAT_NAME=$(echo "$RELATIVE_PATH" | tr '/' '_')
+                    ASSET_NAME="${ARTIFACT_NAME}_run${RUN_NUMBER}_${FLAT_NAME}"
+                    
+                    echo "  Uploading file: $RELATIVE_PATH as $ASSET_NAME"
+                    
+                    UPLOAD_RESPONSE=$(curl -s -X POST \
+                      -H "Accept: application/vnd.github+json" \
+                      -H "Authorization: Bearer $GH_TOKEN" \
+                      -H "Content-Type: application/octet-stream" \
+                      --data-binary @"$FILE_PATH" \
+                      "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=${ASSET_NAME}")
+                    
+                    UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | jq -r '.state // .message // "unknown"')
+                    echo "    Upload status: $UPLOAD_STATUS"
+                  done
                   
-                  UPLOAD_STATUS=$(echo "$UPLOAD_RESPONSE" | jq -r '.state // .message // "unknown"')
-                  echo "  Upload status: $UPLOAD_STATUS"
+                  # 清理临时文件和目录
+                  rm -rf "$TMP_DIR"
+                  rm -f "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip"
                 else
-                  echo "  Warning: Downloaded file is empty, skipping upload"
+                  echo "  Warning: Downloaded file is empty, skipping"
                 fi
-                
-                # 清理临时文件
-                rm -f "/tmp/${ARTIFACT_NAME}_run${RUN_NUMBER}.zip"
               done
             else
               echo "  No artifacts found for this run"
@@ -238,5 +309,10 @@ jobs:
           ASSETS_COUNT=$(echo "$RELEASE_INFO" | jq '.assets | length')
           
           echo "✅ Release created successfully!"
-          echo "📦 Release Name: $RELEASE_NAME"
+          echo "📦 Release Title: $RELEASE_NAME"
           echo "🎯 Assets uploaded: $ASSETS_COUNT"
+          
+          # 列出所有上传的资产
+          echo ""
+          echo "📋 Uploaded assets:"
+          echo "$RELEASE_INFO" | jq -r '.assets[] | "  - \(.name) (\(.size) bytes)"'
