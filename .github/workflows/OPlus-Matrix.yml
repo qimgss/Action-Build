@@ -206,26 +206,9 @@ jobs:
       - name: Generate Matrix
         id: set-matrix
         run: |
-          if [ "${{ github.event.inputs.BUILD_TARGET }}" == "矩阵构建" ]; then
-            DEVICES=$(grep -v '^$' .matrix/devices.txt | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            MATRIX="{\"include\":[]}"
-
-            while IFS= read -r device; do
-              SCHED="false"
-              CLEAN_DEVICE="$device"
-
-              if [[ "$device" == *"(SCHED)"* ]]; then
-                SCHED="true"
-                CLEAN_DEVICE="${device%\(SCHED\)}"
-                CLEAN_DEVICE="${CLEAN_DEVICE%"${CLEAN_DEVICE##*[![:space:]]}"}"
-              fi
-
-              MATRIX=$(echo "$MATRIX" | jq ".include += [{\"file\":\"$CLEAN_DEVICE\",\"sched_hmbird\":\"$SCHED\"}]")
-            done <<< "$DEVICES"
-
-            echo "matrix=$(echo "$MATRIX" | jq -c .)" >> $GITHUB_OUTPUT
-          else
-            echo "matrix=${{ github.event.inputs.BUILD_TARGET }}" >> $GITHUB_OUTPUT
+          chmod +x ./scripts/gen_matrix.sh
+          RESULT="$(./scripts/gen_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" ".matrix/devices.txt")"
+          echo "$RESULT" >> "$GITHUB_OUTPUT"
 
   generate-summary:
     runs-on: ubuntu-latest
@@ -1981,9 +1964,6 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    default:
-      run:
-        shell: bash
     outputs: 
       upload_success: ${{ steps.upload_release.outputs.upload_success }}
     if: ${{ github.event.inputs.BUILD_TARGET == '矩阵构建' && github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' || needs.build.result == 'skipped' && !cancelled() }}
