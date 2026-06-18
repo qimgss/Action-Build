@@ -201,7 +201,7 @@ jobs:
           echo "| KPM实现方式 | ${{ inputs.KPM }} | KPM实现方式 |" >> $GITHUB_STEP_SUMMARY
 
   build:
-    name: ${{ github.event.inputs.FAST_BUILD == 'true' && ' [FAST]' || '' }}${{ contains(github.event.inputs.FILE, '_aosp') && ' [AOSP]' || '' }}${{ github.event.inputs.KPM == 'KPM' && ' [KPM]' || github.event.inputs.KPM == 'KPN' && ' [KPN]' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && ' [BBG]' || '' }}${{ github.event.inputs.SCHED_HMBIRD == 'true' && ' [HMBIRD]' || '' }}${{ github.event.inputs.DROID_SPACES == 'true' && ' [DS]' || '' }}${{ startsWith(github.event.inputs.ZRAM, '1/') && ' [ZRAM]' || '' }}${{ github.event.inputs.REKERNEL == 'true' && ' [REKER]' || '' }}For ${{ github.event.inputs.FILE }} ${{ github.event.inputs.SUFFIX }}
+    name: ${{ github.event.inputs.BUILD_METHOD == 'Make' && ' [FAST]' || '' }}${{ contains(github.event.inputs.FILE, '_aosp') && ' [AOSP]' || '' }}${{ github.event.inputs.KPM == 'KPM' && ' [KPM]' || github.event.inputs.KPM == 'KPN' && ' [KPN]' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && ' [BBG]' || '' }}${{ github.event.inputs.SCHED_HMBIRD == 'true' && ' [HMBIRD]' || '' }}${{ github.event.inputs.DROID_SPACES == 'true' && ' [DS]' || '' }}${{ startsWith(github.event.inputs.ZRAM, '1/') && ' [ZRAM]' || '' }}${{ github.event.inputs.REKERNEL == 'true' && ' [REKER]' || '' }}For ${{ github.event.inputs.FILE }} ${{ github.event.inputs.SUFFIX }}
     needs: generate-summary
     runs-on: ubuntu-latest
     env:
@@ -356,7 +356,7 @@ jobs:
           echo "Selected NETFILTER: ${{ github.event.inputs.NETFILTER }}"
           echo "Selected CCM: ${{ github.event.inputs.CCM }}"
           echo "Selected SUSFS_DEV: ${{ github.event.inputs.SUSFS_DEV }}"
-          echo "Selected FAST_BUILD: ${{ github.event.inputs.FAST_BUILD }}"
+          echo "Selected BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD }}"
           echo "Selected SCHED_HMBIRD: ${{ env.SCHED_HMBIRD }}"
           echo "Selected UNICODE_BYPASS: ${{ github.event.inputs.UNICODE_BYPASS }}"
           echo "Selected DROID_SPACES: ${{ github.event.inputs.DROID_SPACES }}"
@@ -465,7 +465,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.2
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.BUILD_METHOD == 'Make' && 'alpha' || 'beta' }}-16.2
 
       - name: 初始化Ccache
         if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
@@ -578,6 +578,21 @@ jobs:
           echo "KERNEL_SHORT_VERSION=$(echo $NEW_VERSION | cut -d. -f1,2)" >> $GITHUB_ENV
           echo "KERNEL_SHORT_PATCH_VERSION=$(echo $NEW_VERSION | cut -d. -f1,2 | tr '.' '_')" >> $GITHUB_ENV
 
+      - name: 检查内核兼容性并跳过不支持的版本
+        id: check_kernel_skip
+        run: |
+          # 解析内核主次版本
+          TKERNEL_VERSION="${{ steps.kernel_version.outputs.TKERNEL_VERSION }}"
+          MAJOR=$(echo "$TKERNEL_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$TKERNEL_VERSION" | cut -d. -f2)
+          # 6.12及以上内核不支持KernelSU主分支
+          if [ "$MAJOR" -eq 6 ] && [ "$MINOR" -ge 12 ]; then
+            echo "::notice title=跳过构建::KernelSU主分支不支持6.12+内核，当前内核版本：$TKERNEL_VERSION，跳过当前设备构建"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Rust版本处理
         run: |
           cd kernel_workspace/kernel_platform
@@ -596,12 +611,12 @@ jobs:
           fi
 
       # 自定义内核后缀
-      - name: Custom Kernel Suffix if set
+      - name: 自定义内核后缀(如果设置)
         if: ${{ github.event.inputs.SUFFIX != '' && github.event.inputs.SUFFIX != '-1' }}
         run: |
           cd kernel_workspace/kernel_platform
           SUFFIX="${{ github.event.inputs.SUFFIX }}"
-          FAST_BUILD="${{ github.event.inputs.FAST_BUILD }}"
+          BUILD_METHOD="${{ github.event.inputs.BUILD_METHOD }}"
 
           for f in ./common/scripts/setlocalversion ./"$KERNEL_REPOS"/scripts/setlocalversion ./external/dtc/scripts/setlocalversion; do
             [ -f "$f" ] || continue
@@ -616,8 +631,8 @@ jobs:
               sed -i "s|echo \"\${KERNELVERSION}.*scm_version}\"|echo \"\${KERNELVERSION}-${KANDROID_VERSION}-${SUFFIX}\"|" "$f"
             elif grep -q 'echo "\$res"' "$f"; then
               echo "Detected OLD setlocalversion format"
-              if [ "$FAST_BUILD" = "true" ]; then
-                echo "FAST_BUILD enabled: using static res"
+              if [ "$BUILD_METHOD" = "true" ]; then
+                echo "BUILD_METHOD enabled: using static res"
                 sed -i "s/^res=.*/res=\"-${KANDROID_VERSION}-${SUFFIX}\"/" "$f"
               else
                 echo "Standard build: injecting suffix via cut/echo"
@@ -643,7 +658,7 @@ jobs:
         run: |
           cd kernel_workspace
           KANDROID_VERSION="${{ env.KANDROID_VERSION }}"
-          FAST_BUILD="${{ github.event.inputs.FAST_BUILD }}"
+          BUILD_METHOD="${{ github.event.inputs.BUILD_METHOD }}"
 
           # 生成随机数字和随机hash
           RANDOM_DIGIT=$(od -An -N1 -tu1 < /dev/urandom | tr -d '[:space:]' | awk '{print $1 % 11}')
@@ -663,8 +678,8 @@ jobs:
               sed -i "s|echo \"\${KERNELVERSION}.*scm_version}\"|echo \"\${KERNELVERSION}-${KANDROID_VERSION}-${RANDOM_SUFFIX}\"|" "$f"
             elif grep -q 'echo "\$res"' "$f"; then
               echo "Detected OLD setlocalversion format"
-              if [ "$FAST_BUILD" = "true" ]; then
-                echo "FAST_BUILD enabled: using static res with random suffix"
+              if [ "$BUILD_METHOD" = "true" ]; then
+                echo "BUILD_METHOD enabled: using static res with random suffix"
                 sed -i "s/^res=.*/res=\"-${KANDROID_VERSION}-${RANDOM_SUFFIX}\"/" "$f"
               else
                 echo "Standard build: injecting random suffix via cut/echo"
@@ -1359,7 +1374,7 @@ jobs:
 
       - name: 使用 Make 构建内核
         if: ${{ github.event.inputs.BUILD_METHOD == 'MAKE' }}
-        id: fast_build
+        id: Make_Build
         run: |
           KERNEL_VERSION="${{ env.KERNEL_VERSION }}"
           cd kernel_workspace/kernel_platform
@@ -1409,7 +1424,7 @@ jobs:
           if [[ -z "$CLANG_VERSION" ]]; then
             echo "⚠️ 未能从 CLANG_PREBUILT_BIN 或 build.config.constants 获取到 Clang 版本，回退至官方构建脚本"
             echo "fallback=true" >> "$GITHUB_OUTPUT"
-            echo "请考虑关闭 FAST_BUILD 并提交问题"
+            echo "请考虑关闭 BUILD_METHOD 并提交问题"
             exit 0
           fi
 
@@ -1559,7 +1574,7 @@ jobs:
           ccache -s
 
       - name: 使用 Bazel 编译
-        if: ${{ github.event.inputs.BUILD_METHOD == 'BAZEL' || steps.fast_build.outputs.fallback == 'true' }}
+        if: ${{ github.event.inputs.BUILD_METHOD == 'BAZEL' || steps.Make_Build.outputs.fallback == 'true' }}
         run: |
           cd kernel_workspace
           export SKIP_DEFCONFIG_CHECK=1
@@ -1773,10 +1788,10 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.8
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.BUILD_METHOD == 'Make' && 'alpha' || 'beta' }}-16.8
 
       - name: 保存 ThinLTO 缓存
-        if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.FAST_BUILD == 'true' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
+        if: ${{ github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.BUILD_METHOD == 'Make' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v5
         with:
           path: ${{ github.workspace }}/kernel_workspace/.thinlto-cache
