@@ -1130,7 +1130,7 @@ jobs:
       - name: 启用轻量级Linux容器(Droid_Space)
         if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.DROID_SPACES == 'true' }}
         run: |
-          if [ "${{ steps.check.kernel.skip.outputs.SKIP_DROID_SPACE }}" = "true" ]; then
+          if [ "${{ steps.check_kernel_skip.outputs.SKIP_DROID_SPACE }}" = "true" ]; then
             echo "::warning title=DroidSpaces Warning::Add DroidSpace Skipped."
             exit 0
           fi
