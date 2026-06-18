@@ -609,7 +609,7 @@ jobs:
             echo "ENABLE_RUST=false" >> $GITHUB_ENV
           fi
 
-      - name: 检查KernelSU兼容性并跳过不支持的版本
+      - name: 检查内核兼容性并跳过不支持的版本
         id: check_ksu_skip
         run: |
           # 非KernelSU主分支无需检查
@@ -627,6 +627,14 @@ jobs:
             echo "skip=true" >> $GITHUB_OUTPUT
           else
             echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # 检查Droid_Space兼容性
+          if [ "$MAJOR" -eq 6 ] && [ "$MINOR" -ge 12 ]; then
+            echo "::notice title=跳过构建:: DROID_SPACE不支持6.12+内核，当前内核版本：$TKERNEL_VERSION，跳过当前设备"
+            echo "SKIP_DROID_SPACE=true" >> $GITHUB_OUTPUT
+          else
+            echo "SKIP_DROID_SPACE=false" >> $GITHUB_OUTPUT
           fi
 
       # 自定义内核后缀
@@ -1124,8 +1132,8 @@ jobs:
           cp ${RE_DIR}/rekernel.c ${RE_DIR}/rekernel.h ${RE_DIR}/Makefile ${RE_DIR}/Kconfig drivers/rekernel/
           sed -i "s|^\s*//\s*#define KERNEL_${KERNEL_SHORT_PATCH_VERSION}|\#define KERNEL_${KERNEL_SHORT_PATCH_VERSION}|" drivers/rekernel/rekernel.h
 
-      - name: 启用轻量级Linux容器
-        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && github.event.inputs.DROID_SPACES == 'true' }}
+      - name: 启用轻量级Linux容器(Droid_Space)
+        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && steps.check.ksu.skip.outputs.SKIP_DROID_SPACE != 'true' github.event.inputs.DROID_SPACES == 'true' }}
         run: |
           PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches"
           cd kernel_workspace/kernel_platform/common
@@ -1936,18 +1944,8 @@ jobs:
           # 从矩阵 Job 的输出中获取第一个有效的 KSU_BRANCH_VERSION
           # 使用 join 将数组转为空格分隔的字符串
           KSU_BRANCH_VERSION=""
-          for version in ${{ join(needs.build.outputs.KSU_BRANCH_VERSION, ' ') }}; do
-            if [ -n "$version" ]; then
-              KSU_BRANCH_VERSION="$version"
-              break
-            fi
-          done
-          
-          # 如果仍然为空，使用默认值
-          if [ -z "$KSU_BRANCH_VERSION" ]; then
-            KSU_BRANCH_VERSION="KernelSU-Next"
-          fi
-          
+          KSU_BRANCH_VERSION="$version"
+                    
           echo "RELEASE_TITLE=$KSU_BRANCH_VERSION $BUILD_TAG" >> $GITHUB_OUTPUT
 
       - name: 生成Release描述
@@ -2065,52 +2063,3 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-       
-  upload:
-    needs: release
-    if: needs.build.outputs.upload_ok != 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fallback upload
-        run: echo "Release上传失败，执行fallback，upload_success=${{ needs.build.outputs.upload_success }}"
-      
-      - name: General Release description
-        run: |
-          body=$(cat <<'EOF'
-          # 内核构建配置详情
-
-          ## 构建信息
-          - **KernelSU 版本**: `${{ needs.build.outputs.KSU_BRANCH_VERSION }}`
-          - **构建时间**: `${{ env.KBUILD_BUILD_TIMESTAMP }}`
-          - **自定义后缀**: `${{ github.event.inputs.SUFFIX }}`
-          
-          ## 功能开关状态
-          | 功能 | 状态 | 说明 |
-          |------|------|------|
-          | KernelSU分支 | `${{ github.event.inputs.KERNELSU_BRANCH }}` | KernelSU分支 |
-          | 内核模块实现 | `${{ github.event.inputs.KPM }}` | 内核模块实现方式 |
-          | 关键分区写入保护 | ${{ github.event.inputs.LSM_BBG == 'true' && '✅' || '❌' }} | BBG分区保护 |
-          | 网络功能拓展 | ${{ github.event.inputs.NETFILTER == 'true' && '✅' || '❌' }} | 网络功能拓展 |
-          | 网络拥塞控制 | ${{ github.event.inputs.CCM == 'true' && '✅' || '❌' }} | 网络拥塞控住 |
-          | Unicode字码点修复 | ${{ github.event.inputs.UNICODE_BYPASS == 'true' && '✅' || '❌' }} | 零宽字符修复 |
-          | 轻量级Linux容器 | ${{ github.event.inputs.DROID_SPACES == 'true' && '✅' || '❌' }} | 轻量级Linux容器 |
-          | Re-Kernel | ${{ github.event.inputs.RE_KERNEL == 'true' && '✅' || '❌' }} | Re-Kernel |
-          | 风驰内核调度 | ${{ env.SCHED_HMBIRD == 'true' && '✅' || '❌' }} | 风驰游戏内核调度 |
-          
-          > 工作流运行: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          > 哈希值： [${GITHUB_SHA:0:7}]
-          EOF
-          )
-          ONE_LINE=$(echo "$BODY" | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-          echo "body=$ONE_LINE" >> $GITHUB_OUTPUT
-      
-      - name: Upload to release
-        uses: ./.github/workflows/upload.yml
-        with:
-          workflow_name: 矩阵构建所有一加内核
-          include_failed_cancelled: true
-          artifact_count: 1
-          branch_name: ${{ github.ref_name }}
-          release_title: ${{ needs.release.outputs.RELEASE_TITLE }}
-          release_tag: ${{ needs.release.outputs.BUILD_TAG }}
-          release_body: ${{ needs.prepare-body.outputs.body }}
