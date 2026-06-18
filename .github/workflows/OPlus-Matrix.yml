@@ -1982,6 +1982,9 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    default:
+      run:
+        shell: bash
     outputs: 
       upload_success: ${{ steps.upload_release.outputs.upload_success }}
     if: ${{ github.event.inputs.BUILD_TARGET == '矩阵构建' && github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' || needs.build.result == 'skipped' && !cancelled() }}
