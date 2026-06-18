@@ -1978,7 +1978,6 @@ jobs:
           name: KernelSU-Manager
           path: ${{ steps.get-ksu-manager.outputs.KERNELSU_APK }}
 
-
   release:
     needs: build
     runs-on: ubuntu-latest
