@@ -206,7 +206,7 @@ jobs:
       - name: Generate Matrix
         id: set-matrix
         run: |
-          chmod +x ./scripts/gen_matrix.sh
+          chmod +x ./.matrix/general_matrix.sh
           RESULT="$(./scripts/gen_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" ".matrix/devices.txt")"
           echo "$RESULT" >> "$GITHUB_OUTPUT"
 
