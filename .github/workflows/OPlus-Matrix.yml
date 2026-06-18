@@ -15,6 +15,68 @@ on:
         options:
           - BAZEL
           - MAKE
+      BUILD_TARGET:
+        type: choice
+        required: true
+        default: 
+        options:
+          - 矩阵构建
+          - 使用任意清单构建(不要选择此项)
+          - oneplus_nord_n30_se_5g_v
+          - oneplus_10r_v
+          - oneplus_nord_3_v
+          - oneplus_ace_v
+          - oneplus_ace_race_v
+          - oneplus_10_pro_b
+          - oneplus_10t_v
+          - oneplus_11r_b
+          - oneplus_ace2_b
+          - oneplus_pad_lite_b
+          - oneplus_pad_mt6983_b
+          - oneplus_ace_2v_b
+          - oneplus_ace_pro_v
+          - oneplus_11_b
+          - oneplus_12r_b
+          - oneplus_ace2_pro_b
+          - oneplus_ace3_b
+          - oneplus_open_b
+          - oneplus_nord_ce4_b
+          - oneplus_12_b
+          - oneplus_pad_go_2_b
+          - oneplus_nord_ce4_lite_5g_b
+          - oneplus_turbo_6v
+          - oneplus_nord_4_b
+          - oneplus_ace_3v_b
+          - oneplus_pad_mt6897_b
+          - oneplus_13r_b
+          - oneplus_ace3_pro_b
+          - oneplus_ace5_b
+          - oneplus_pad_pro_b
+          - oneplus_pad2_b
+          - oneplus_nord_ce5_b
+          - oneplus_nord_5_b
+          - oneplus_ace5_pro_b
+          - oneplus_13_b
+          - oneplus_13t_b
+          - oneplus_13s_b
+          - oneplus_pad_2_pro_b
+          - oneplus_pad_3_b
+          - oneplus_ace5_race_b
+          - oneplus_ace5_ultra_b
+          - oneplus_pad2_mt6991_b
+          - oneplus_ace_6
+          - oneplus_turbo_6
+          - oneplus_ace_6t
+          - oneplus_ace_6t_Canary
+          - oneplus_15r
+          - oneplus_15r_Canary
+          - oneplus_15
+          - oneplus_15_Canary
+          - oneplus_15t
+          - oneplus_15t_Canary
+          - oneus_pad_3_pro
+          - oneplus_pad_3_pro_Canary
+          - oneplus_pad_4
       KERNELSU_BRANCH:
         type: choice
         description: "KernelSU分支"
@@ -144,23 +206,26 @@ jobs:
       - name: Generate Matrix
         id: set-matrix
         run: |
-          DEVICES=$(grep -v '^$' .matrix/devices.txt | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-          MATRIX="{\"include\":[]}"
+          if [ "${{ github.event.inputs.BUILD_TARGET }}" == "矩阵构建" ]; then
+            DEVICES=$(grep -v '^$' .matrix/devices.txt | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            MATRIX="{\"include\":[]}"
 
-          while IFS= read -r device; do
-            SCHED="false"
-            CLEAN_DEVICE="$device"
+            while IFS= read -r device; do
+              SCHED="false"
+              CLEAN_DEVICE="$device"
 
-            if [[ "$device" == *"(SCHED)"* ]]; then
-              SCHED="true"
-              CLEAN_DEVICE="${device%\(SCHED\)}"
-              CLEAN_DEVICE="${CLEAN_DEVICE%"${CLEAN_DEVICE##*[![:space:]]}"}"
-            fi
+              if [[ "$device" == *"(SCHED)"* ]]; then
+                SCHED="true"
+                CLEAN_DEVICE="${device%\(SCHED\)}"
+                CLEAN_DEVICE="${CLEAN_DEVICE%"${CLEAN_DEVICE##*[![:space:]]}"}"
+              fi
 
-            MATRIX=$(echo "$MATRIX" | jq ".include += [{\"file\":\"$CLEAN_DEVICE\",\"sched_hmbird\":\"$SCHED\"}]")
-          done <<< "$DEVICES"
+              MATRIX=$(echo "$MATRIX" | jq ".include += [{\"file\":\"$CLEAN_DEVICE\",\"sched_hmbird\":\"$SCHED\"}]")
+            done <<< "$DEVICES"
 
-          echo "matrix=$(echo "$MATRIX" | jq -c .)" >> $GITHUB_OUTPUT
+            echo "matrix=$(echo "$MATRIX" | jq -c .)" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=${{ github.event.inputs.BUILD_TARGET }}" >> $GITHUB_OUTPUT
 
   generate-summary:
     runs-on: ubuntu-latest
@@ -169,6 +234,11 @@ jobs:
         id: generate_summary
         env:
           KSU_BRANCH: ${{ github.event.inputs.KERNELSU_BRANCH }}
+          DROID_SPACE_STATUS: ${{ github.event.inputs.DROID_SPACES == 'true' && '✅' || '❌' }}
+          REKERNEL_STATUS: ${{ github.event.inputs.RE_KERNEL == 'true' && '✅' || '❌' }}
+          LSM_BBG_STATUS: ${{ github.event.inputs.LSM_BBG == 'true' && '✅' || '❌' }}
+          NETFILTER_STATUS: ${{ github.event.inputs.NETFILTER == 'true' && '✅' || '❌' }}
+          CCM_STATUS: ${{ github.event.inputs.CCM == 'true' && '✅' || '❌' }}
         run: |
           KSU_BRANCH="${{ env.KSU_BRANCH }}"
           Is_DEV_SUSFS="${{ env.Is_DEV_SUSFS }}"
@@ -176,10 +246,15 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 构建目标 | ${{ inputs.BUILD_TARGET }} | 本次构建的目标 |" >> $GITHUB_STEP_SUMMARY
           echo "| Release发布形式  | ${{ inputs.RELEASE_TYPE }} | 发布到Release的形式(或不) |" >> $GITHUB_STEP_SUMMARY
           echo "| KernelSU分支 | ${{ inputs.KERNELSU_BRANCH }} | KernelSU的分支 |" >> $GITHUB_STEP_SUMMARY
-          echo "| SuSFS | $KSU_BRANCH | SuSFS调用 |" >> $GITHUB_STEP_SUMMARY
           echo "| KPM实现方式 | ${{ inputs.KPM }} | KPM实现方式 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Droid-Space | ${{ env.DROID_SPACE_STATUS }} | 轻量级Linux容器 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Re-Kernel | ${{ env.REKERNEL_STATUS }} | Re-Kernel |"
+          echo "| BBR+ECN | ${{ env.CCM_STATUS }} | 网络拥塞控制与管理机制 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 网络功能拓展 | ${{ env.NETFILTER_STATUS }} | 网络功能拓展 |" >> $GITHUB_STEP_SUMMARY
+          echo "| BBG分区保护 | ${{ env.LSM_BBG_STATUS }} | BBG分区保护 |" >> $GITHUB_STEP_SUMMARY
 
   build:
     needs: [prepare-matrix, generate-summary]
@@ -1909,7 +1984,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs: 
       upload_success: ${{ steps.upload_release.outputs.upload_success }}
-    if: ${{ github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' || needs.build.result == 'skipped' && !cancelled() }}
+    if: ${{ github.event.inputs.BUILD_TARGET == '矩阵构建' && github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' || needs.build.result == 'skipped' && !cancelled() }}
     steps:
       - name: 检出仓库代码
         uses: actions/checkout@v6
