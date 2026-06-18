@@ -1133,7 +1133,7 @@ jobs:
           sed -i "s|^\s*//\s*#define KERNEL_${KERNEL_SHORT_PATCH_VERSION}|\#define KERNEL_${KERNEL_SHORT_PATCH_VERSION}|" drivers/rekernel/rekernel.h
 
       - name: 启用轻量级Linux容器(Droid_Space)
-        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && steps.check.ksu.skip.outputs.SKIP_DROID_SPACE != 'true' github.event.inputs.DROID_SPACES == 'true' }}
+        if: ${{ steps.check_ksu_skip.outputs.skip != 'true' && steps.check.ksu.skip.outputs.SKIP_DROID_SPACE != 'true' && github.event.inputs.DROID_SPACES == 'true' }}
         run: |
           PATCH_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches"
           cd kernel_workspace/kernel_platform/common
