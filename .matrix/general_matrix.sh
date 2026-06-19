@@ -22,5 +22,5 @@ if [ "$INPUT" = "矩阵构建" ]; then
 
   echo "matrix=$(echo "$MATRIX" | jq -c .)"
 else
-  echo "matrix=$INPUT"
+  echo "matrix={\"include\":[{\"file\":\"$INPUT\",\"sched_hmbird\":\"false\"}]}"
 fi
