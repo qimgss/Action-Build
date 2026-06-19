@@ -209,15 +209,11 @@ jobs:
       - name: Generate Matrix
         id: set-matrix
         run: |
-          chmod +x ./.matrix/general_matrix.sh
-          RESULT="$(./.matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" ".matrix/devices.txt")"
-          echo "$RESULT" >> "$GITHUB_OUTPUT"
-          chmod +x ./.matrix/general_matrix.sh
-          RESULT="$(./.matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" ".matrix/devices.txt")"
-          echo "=== DEBUG MATRIX RAW ==="
-          echo "$RESULT"
-          echo "=== END ==="
-          echo "$RESULT" >> "$GITHUB_OUTPUT"
+          chmod 777 .matrix/general_matrix.sh
+          RAW="$(bash .matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" ".matrix/devices.txt")"
+          echo "RAW => $RAW"
+          echo "matrix=$RAW" >> "$GITHUB_OUTPUT"
+        shell: bash
 
   generate-summary:
     runs-on: ubuntu-latest
@@ -251,7 +247,7 @@ jobs:
   build:
     needs: [prepare-matrix, generate-summary]
     strategy:
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix || '{"include":[]}') }}
       fail-fast: false
 
     name: >

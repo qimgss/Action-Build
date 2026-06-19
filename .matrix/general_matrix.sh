@@ -2,19 +2,16 @@
 set -euo pipefail
 
 INPUT="$1"
-DEVICE_FILE="$2"
+DEVICE_FILE="${2:-}"
 
-echo "INPUT=$INPUT"
-echo "DEVICE_FILE=$DEVICE_FILE"
-
-# 矩阵构建
+# ===== 矩阵构建 =====
 if [ "$INPUT" = "矩阵构建" ]; then
-  if [ ! -f "$DEVICE_FILE" ]; then
-    echo "ERROR: devices.txt not found"
-    exit 1
+  if [ -f "$DEVICE_FILE" ]; then
+    DEVICES=$(grep -v '^$' "$DEVICE_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  else
+    DEVICES=""
   fi
 
-  DEVICES=$(grep -v '^$' "$DEVICE_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   MATRIX='{"include":[]}'
 
   while IFS= read -r device; do
@@ -24,15 +21,15 @@ if [ "$INPUT" = "矩阵构建" ]; then
     if [[ "$device" == *"(SCHED)"* ]]; then
       SCHED="true"
       CLEAN="${device%(SCHED)}"
-      CLEAN="${CLEAN%"${CLEAN##*[![:space:]]}"}"
+      CLEAN="$(echo "$CLEAN" | sed 's/[[:space:]]*$//')"
     fi
     MATRIX=$(echo "$MATRIX" | jq --arg f "$CLEAN" --arg s "$SCHED" \
       '.include += [{"file":$f,"sched_hmbird":$s}]')
   done <<< "$DEVICES"
 
-  echo "matrix=$(echo "$MATRIX" | jq -c .)"
+  echo "$MATRIX" | jq -c .
   exit 0
 fi
 
-# 单个设备
-echo "matrix={\"include\":[{\"file\":\"$INPUT\",\"sched_hmbird\":\"false\"}]}"
+# ===== 单设备构建（不依赖 jq / 文件）=====
+echo "{\"include\":[{\"file\":\"$INPUT\",\"sched_hmbird\":\"false\"}]}"
