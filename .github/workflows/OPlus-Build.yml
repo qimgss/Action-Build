@@ -262,7 +262,6 @@ jobs:
     env:
       FILE: ${{ matrix.file }}
       SCHED_HMBIRD: ${{ matrix.sched_hmbird }}
-      SCHED
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
