@@ -12,6 +12,7 @@
           oneplus_12_b
           oneplus_ace_3v_b
           oneplus_ace3_pro_b
+          oneplus_pad_pro_b
           oneplus_ace5_b
           oneplus_ace5_pro_b(SCHED)
           oneplus_13_b(SCHED)
@@ -23,3 +24,4 @@
           oneplus_15t_Canary
           oneplus_pad_4_Canary
           oneplus_ace6_ultra_Canary
+
