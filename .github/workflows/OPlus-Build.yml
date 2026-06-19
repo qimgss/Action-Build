@@ -1,4 +1,4 @@
-name: 矩阵构建所有一加内核
+name: 构建一加内核
 
 permissions:
   contents: write
@@ -1875,12 +1875,24 @@ jobs:
             exit 0
           fi
 
+      - name: 压缩 Zram 模块
+        if: steps.check_kernel_skip.outputs.skip != 'true'
+        id: compress_zram
+        env:
+          ZRAM_NAME: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
+        run: |
+          ZRAM_ZIP_NAME="${{ env.KSU_NAME }}${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}.zip"
+          echo "ZRAM_MODULE_NAME=$ZRAM_ZIP_NAME" >> $GITHUB_OUTPUT
+          cd ./ZRAM-Module/*
+          zip -r "../$ZRAM_ZIP_NAME" .
+          cd ../
+
       - name: 上传 ZRAM 模块
         if: steps.check_kernel_skip.outputs.skip != 'true' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         uses: actions/upload-artifact@v7
         with:
           name: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
-          path: ZRAM-Module/*
+          path: ${{ steps.compress_zram.outputs.ZRAM_MODULE_NAME }}
 
       - name: 保存前检查缓存大小
         if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_NOCACHE == 'false' }}
