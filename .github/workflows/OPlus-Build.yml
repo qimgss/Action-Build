@@ -210,6 +210,11 @@ jobs:
           RESULT="$(./.matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" ".matrix/devices.txt")"
           echo "$RESULT" >> "$GITHUB_OUTPUT"
 
+      - name: Debug Matrix Output
+        run: |
+          echo "RAW MATRIX OUTPUT:"
+          cat $GITHUB_OUTPUT
+
   generate-summary:
     runs-on: ubuntu-latest
     steps:
