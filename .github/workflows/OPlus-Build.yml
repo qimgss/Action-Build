@@ -2117,7 +2117,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.event.inputs.KERNELSU_BRANCH }}
+          tag_name: ${{ steps.tag_info.outputs.RELEASE_TAG }}
           name: ${{ steps.tag_info.outputs.RELEASE_TITLE }}
           body_path: ./release_body.md
           draft: false
