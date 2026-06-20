@@ -2137,7 +2137,7 @@ jobs:
               for file in "$artifact_dir"/*; do
                 if [ -f "$file" ]; then
                   echo "上传文件: $file"
-                  gh release upload ${{ github.event.inputs.KERNELSU_BRANCH }} "$file" --clobber
+                  gh release upload ${{ steps.tag_info.outputs.RELEASE_TAG }} "$file" --clobber
                 fi
               done
             fi
