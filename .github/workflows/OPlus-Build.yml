@@ -1885,7 +1885,7 @@ jobs:
           fi
 
       - name: 压缩 Zram 模块
-        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建'
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         id: compress_zram
         env:
           ZRAM_NAME: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
