@@ -1892,7 +1892,7 @@ jobs:
         run: |
           zramname="${{ env.KSU_NAME }}${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}.zip"
           echo "zramname=$zramname" >> $GITHUB_OUTPUT
-          cd ./ZRAM-Module/*
+          cd ./ZRAM-Module
           zip -r "../$zramname" .
           cd ../
 
