@@ -1,5 +1,8 @@
 name: 构建一加内核
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
   actions: write
@@ -201,7 +204,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -269,7 +272,7 @@ jobs:
 
     steps:
       - name: 检出仓库代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: 调试矩阵
         run: |
@@ -1956,7 +1959,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 检出仓库代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         
       - name: 获取KernelSU管理器
         id: get-ksu-manager
@@ -2003,7 +2006,7 @@ jobs:
     if: ${{ github.event.inputs.BUILD_TARGET == '矩阵构建' && github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' || needs.build.result == 'skipped' && !cancelled() }}
     steps:
       - name: 检出仓库代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
