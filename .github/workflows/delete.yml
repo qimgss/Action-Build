@@ -9,8 +9,7 @@ on:
         required: true
         default: 'Build All OnePlus Kernels'
         options:
-          - 编译任意一加内核
-          - 矩阵构建所有一加内核
+          - 构建一加内核
           - CAll Build Start UP
       cache_mode:
         type: choice
