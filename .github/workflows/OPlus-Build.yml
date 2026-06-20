@@ -2027,7 +2027,7 @@ jobs:
           KSU_BRANCH_VERSION=""
           KSU_BRANCH_VERSION="$version"
                     
-          echo "RELEASE_TITLE=$KSU_BRANCH_VERSION $BUILD_TAG" >> $GITHUB_OUTPUT
+          echo "RELEASE_TITLE=${{ needs.build.outputs.KSU_BRANCH_VERSION }} $BUILD_TAG" >> $GITHUB_OUTPUT
 
       - name: 生成Release描述
         env:
