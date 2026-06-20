@@ -196,6 +196,11 @@ on:
         description: "是否停用此次Ccache？"
         required: true
         default: false
+      SKIP_612_KERNEL:
+        type: boolean
+        description: "是否跳过6.12内核的构建？(仅KernelSU生效)"
+        required: false
+        default: false
 
 jobs:
   prepare-matrix:
@@ -677,6 +682,7 @@ jobs:
 
       - name: 检查内核兼容性并跳过不支持的版本
         id: check_kernel_skip
+        if: ${{ github.event.inputs.SKIP_612_KERNEL == 'true' }}
         run: |
           # 解析内核主次版本
           TKERNEL_VERSION="${{ steps.kernel_version.outputs.TKERNEL_VERSION }}"
