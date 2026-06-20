@@ -1802,7 +1802,7 @@ jobs:
           echo "value=${{ env.ZRAM_ALGO_U && format('_{0}', env.ZRAM_ALGO_U) || '' }}${{ github.event.inputs.KPM == 'KPM' && '_KPM' || github.event.inputs.KPM == 'KPN' && '_KPN' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && '_BBG' || '' }}_ILH${{ env.SCHED_HMBIRD== 'true' && '_HMBIRD' || '' }}${{ github.event.inputs.DROID_SPACES== 'true' && '_DS' || '' }}${{ github.event.inputs.RE_KERNEL == 'true' && '_REKER' || '' }}" >> $GITHUB_OUTPUT
       
       - name: 压缩 AnyKernel3
-        if: steps.check_kernel_skip.outputs.skip != 'true'
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建'
         id: compress
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
@@ -1813,14 +1813,23 @@ jobs:
           zip -r "../$AK3_ZIP_NAME" .
           cd ../
 
-      - name: 上传 AnyKernel3
-        if: steps.check_kernel_skip.outputs.skip != 'true'
+      - name: 上传 AnyKernel3 (方式1)
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建'
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
         uses: actions/upload-artifact@v7
         with:
           name: AnyKernel3_${{ env.KSU_NAME }}_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
           path: ${{ steps.compress.outputs.ak3name }}
+
+      - name: 上传 AnyKernel3 (方式2)
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET != '矩阵构建'
+        env:
+          KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: AnyKernel3_${{ env.KSU_NAME }}_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
+          path: AnyKernel3/*
 
       - name: 提取和处理 ZRAM 模块
         if: ${{ steps.check_kernel_skip.outputs.skip != 'true' &&  startsWith(github.event.inputs.ZRAM, '1/') }}
@@ -1876,24 +1885,32 @@ jobs:
           fi
 
       - name: 压缩 Zram 模块
-        if: steps.check_kernel_skip.outputs.skip != 'true'
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建'
         id: compress_zram
         env:
           ZRAM_NAME: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
         run: |
-          ZRAM_ZIP_NAME="${{ env.KSU_NAME }}${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}.zip"
-          echo "ZRAM_MODULE_NAME=$ZRAM_ZIP_NAME" >> $GITHUB_OUTPUT
+          zramname="${{ env.KSU_NAME }}${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}.zip"
+          echo "zramname=$zramname" >> $GITHUB_OUTPUT
           cd ./ZRAM-Module/*
-          zip -r "../$ZRAM_ZIP_NAME" .
+          zip -r "../$zramname" .
           cd ../
 
-      - name: 上传 ZRAM 模块
-        if: steps.check_kernel_skip.outputs.skip != 'true' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
+      - name: 上传 ZRAM 模块 (方式1)
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET != '矩阵构建' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         uses: actions/upload-artifact@v7
         with:
           name: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
           path: ${{ steps.compress_zram.outputs.ZRAM_MODULE_NAME }}
 
+
+      - name: 上传 ZRAM 模块 (方式2)
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
+          path: ZRAM-Module/*
+        
       - name: 保存前检查缓存大小
         if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_NOCACHE == 'false' }}
         id: cache_size_check
