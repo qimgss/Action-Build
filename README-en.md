@@ -60,7 +60,7 @@ Prohibit the promotion of forked repositories with **no modifications**; see [LI
  
 ------
 > [!IMPORTANT]
->Data reference on the question of how long to run
+>Data reference on the question of how long to run - Single Device
 >
 >| Build Method | Average Duration Range | Maximum Duration |
 >|--------|------------------|----------------------|------------|
@@ -68,6 +68,12 @@ Prohibit the promotion of forked repositories with **no modifications**; see [LI
 >| `BAZEL` | `5.10~5.15` | `22min ~ 27min`| `28min`    |
 >| `BAZEL` | `6.1~6.12` | `59min ~ 1h38min`| `1h46min` |
 >
+>Data reference on the question of how long to run - Matrix
+>
+>| 构建方式 | 内核版本 | 平均耗时范围|最大耗时|
+>|--------|------------------|----------------------|------------|
+>| `MAKE` | `All device` | `1st:50min ~ 1h10min 2nd:33min ~ 37min` | `40/29min`|
+>| `BAZEL` | `All device` | `18min ~ 1h12min`| `1h46min` |
 > >Using ccache may slow down the first build; this only applies to ultra-fast builds.
 >
 > >Differences in repo tool versions may affect the build time.
