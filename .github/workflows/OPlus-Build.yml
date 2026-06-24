@@ -934,8 +934,6 @@ jobs:
           echo "::endgroup::"
           
           echo "KSU_BRANCH_VERSION=SukiSU-Ultra-$KSU_VERSION" >> $GITHUB_OUTPUT
-          cp $GITHUB_WORKSPACE/patches/sukisu/event.c drivers/kernelsu/sulog/event.c
-          echo "✅ event.c 已替换为修复版本"
 
       - name: 添加ReSukiSU
         if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.KERNELSU_BRANCH == 'ReSukiSU' }}
