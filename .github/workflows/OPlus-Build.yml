@@ -120,8 +120,8 @@ on:
       SUSFS_META:
         type: string
         description: "回退SUSFS(输入哈希或次数或-1关闭)"
-        required: true
-        default: "-1"
+        required: false
+        default: ""
       KSU_META:
         type: string
         description: "分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)"
