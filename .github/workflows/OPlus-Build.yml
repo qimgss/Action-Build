@@ -872,6 +872,9 @@ jobs:
 
           curl -LSs "https://raw.githubusercontent.com/qimgss/SukiSU-Ultra/builtin/kernel/setup.sh" | bash -s "$BRANCH_NAME"
           cd ./KernelSU
+          cd kernel_workspace/kernel_platform/KernelSU
+          cp $GITHUB_WORKSPACE/patches/sukisu/event.c drivers/kernelsu/sulog/event.c
+           echo "✅ event.c 已替换为修复版本"
 
           # 如果指定了手动 hash，就切换到该提交
           if [[ -n "$MANUAL_HASH" ]]; then
