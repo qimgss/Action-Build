@@ -121,7 +121,7 @@ on:
         type: string
         description: "回退SUSFS(输入哈希或次数或-1关闭)"
         required: false
-        default: ""
+        default: "-1"
       KSU_META:
         type: string
         description: "分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)"
@@ -1816,7 +1816,7 @@ jobs:
           zip -r "../$AK3_ZIP_NAME" .
           cd ../
 
-      - name: 上传 AnyKernel3 (方式1)
+      - name: 上传已压缩的 AnyKernel3
         if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建'
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
@@ -1825,7 +1825,7 @@ jobs:
           name: AnyKernel3_${{ env.KSU_NAME }}_${{ env.KSUVER }}_${{ steps.extract_info.outputs.value }}(${{ env.TKERNEL_VERSION }})${{ steps.suffix.outputs.value }}
           path: ${{ steps.compress.outputs.ak3name }}
 
-      - name: 上传 AnyKernel3 (方式2)
+      - name: 上传为压缩的 AnyKernel3 (方式2)
         if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET != '矩阵构建'
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
@@ -1899,7 +1899,7 @@ jobs:
           zip -r "../$zramname" .
           cd ../
 
-      - name: 上传 ZRAM 模块 (方式1)
+      - name: 上传已压缩的 ZRAM 模块
         if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET != '矩阵构建' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         uses: actions/upload-artifact@v7
         with:
@@ -1907,7 +1907,7 @@ jobs:
           path: ${{ steps.compress_zram.outputs.ZRAM_MODULE_NAME }}
 
 
-      - name: 上传 ZRAM 模块 (方式2)
+      - name: 上传未压缩的 ZRAM 模块
         if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         uses: actions/upload-artifact@v7
         with:
