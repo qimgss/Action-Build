@@ -145,7 +145,7 @@ on:
       SUFFIX:
         type: string
         description: "自定义内核后缀(不输入使用随机字符串)"
-        required: true
+        required: false
         default: "build-qimgss"
       SUBLEVEL:
         description: "自定义内核等级欺骗(SUBLEVEL)"
