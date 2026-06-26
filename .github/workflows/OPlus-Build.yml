@@ -23,7 +23,7 @@ on:
         required: true
         default: 
         options:
-          - 矩阵构建
+          - 构建全部机型
           - 使用任意清单构建(不要选择此项)
           - oneplus_nord_n30_se_5g_v
           - oneplus_10r_v
