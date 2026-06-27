@@ -20,11 +20,11 @@ on:
           - MAKE
       BUILD_TARGET:
         type: choice
+        description: "构建目标"
         required: true
         default: 
         options:
           - 构建全部机型
-          - 使用任意清单构建(不要选择此项)
           - oneplus_nord_n30_se_5g_v
           - oneplus_10r_v
           - oneplus_nord_3_v
