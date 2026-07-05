@@ -1886,7 +1886,7 @@ jobs:
           fi
 
       - name: 压缩 Zram 模块
-        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '构建全部机型' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         id: compress_zram
         env:
           ZRAM_NAME: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
@@ -1898,7 +1898,7 @@ jobs:
           cd ../
 
       - name: 上传已压缩的 ZRAM 模块
-        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET != '矩阵构建' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '构建全部机型' && startsWith(github.event.inputs.ZRAM, '1/') && steps.zram_find.outputs.upload != 'false'
         uses: actions/upload-artifact@v7
         with:
           name: ZRAM-Module_${{ env.KERNEL_VERSION }}_${{ steps.extract_info.outputs.value }}
