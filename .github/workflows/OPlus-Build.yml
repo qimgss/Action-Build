@@ -246,6 +246,15 @@ jobs:
           echo "| BBR+ECN | ${{ env.CCM_STATUS }} | 网络拥塞控制与管理机制 |" >> $GITHUB_STEP_SUMMARY
           echo "| 网络功能拓展 | ${{ env.NETFILTER_STATUS }} | 网络功能拓展 |" >> $GITHUB_STEP_SUMMARY
           echo "| BBG分区保护 | ${{ env.LSM_BBG_STATUS }} | BBG分区保护 |" >> $GITHUB_STEP_SUMMARY
+          if ${{ "inputs.KERNELSU_BRANCH" == "SukiSU-Ultra" }}; then
+            KSU_META="${{ github.event.inputs.KSU_META }}"
+            [[ "$KSU_META" == */*/* ]] && KSU_META="${KSU_META##*/}"
+            if [[ -z "$KSU_META" ]]; then
+              echo "| KernelSU自定义版本标识 | ❌ | 未设置自定义版本标识，使用默认版本 |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| KernelSU自定义版本标识 | ✅ | 设置了自定义版本标识: $KSU_META |" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
 
   build:
     needs: [prepare-matrix, generate-summary]
