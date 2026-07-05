@@ -246,7 +246,7 @@ jobs:
           echo "| BBR+ECN | ${{ env.CCM_STATUS }} | 网络拥塞控制与管理机制 |" >> $GITHUB_STEP_SUMMARY
           echo "| 网络功能拓展 | ${{ env.NETFILTER_STATUS }} | 网络功能拓展 |" >> $GITHUB_STEP_SUMMARY
           echo "| BBG分区保护 | ${{ env.LSM_BBG_STATUS }} | BBG分区保护 |" >> $GITHUB_STEP_SUMMARY
-          if ${{ inputs.KERNELSU_BRANCH == "SukiSU-Ultra" }}; then
+          if ${{ inputs.KERNELSU_BRANCH =='‘SukiSU-Ultra' }}; then
             KSU_META="${{ github.event.inputs.KSU_META }}"
             [[ "$KSU_META" == */*/* ]] && KSU_META="${KSU_META##*/}"
             if [[ -z "$KSU_META" ]]; then
