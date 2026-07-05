@@ -675,15 +675,13 @@ jobs:
             echo "ENABLE_RUST=false" >> $GITHUB_ENV
           fi
 
-      - name: 检查内核兼容性并跳过不支持的版本
+      - name: 检查内核兼容性并跳过构建
         id: check_kernel_skip
+        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'KernelSU' || github.event.inputs.KERNELSU_BRANCH == 'SukiSU-Ultra' }}
         run: |
           # 解析内核主次版本
-          TKERNEL_VERSION="${{ steps.kernel_version.outputs.TKERNEL_VERSION }}"
-          MAJOR=$(echo "$TKERNEL_VERSION" | cut -d. -f1)
-          MINOR=$(echo "$TKERNEL_VERSION" | cut -d. -f2)
           # 6.12及以上内核不支持KernelSU主分支
-          if [ "$MAJOR" -eq 6 ] && [ "$MINOR" -ge 12 ]; then
+          if [ ${{ env.KV2 }} -eq "612" ]; then
             echo "::notice title=跳过构建::KernelSU主分支不支持6.12+内核，当前内核版本：$TKERNEL_VERSION，跳过当前设备构建"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
