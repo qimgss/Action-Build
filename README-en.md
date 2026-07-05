@@ -96,8 +96,7 @@ Prohibit the promotion of forked repositories with **no modifications**; see [LI
 ------
  
 # Features in Development
-- [ ] Kexec Kernel Hot Swap Support
-- [ ] Full support for all kernel versions of Fengchi
+- [ ] Compile devices for Android 15, 16, and 17 at the same time
 - Toothpaste should be squeezed bit by bit, GPUs should be cut slice by slice, PPTs should be shown slide by slide, and code should be written line by line — more features and optimizations... stay tuned!
  
 # Changelog
