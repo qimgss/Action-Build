@@ -233,7 +233,7 @@ jobs:
         run: |
           KSU_BRANCH="${{ env.KSU_BRANCH }}"
           Is_DEV_SUSFS="${{ env.Is_DEV_SUSFS }}"
-          echo "### 矩阵构建的摘要" >> $GITHUB_STEP_SUMMARY
+          echo "### 构建摘要" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
@@ -1812,7 +1812,7 @@ jobs:
           echo "value=${{ env.ZRAM_ALGO_U && format('_{0}', env.ZRAM_ALGO_U) || '' }}${{ github.event.inputs.KPM == 'KPM' && '_KPM' || github.event.inputs.KPM == 'KPN' && '_KPN' || '' }}${{ github.event.inputs.LSM_BBG == 'true' && '_BBG' || '' }}_ILH${{ env.SCHED_HMBIRD== 'true' && '_HMBIRD' || '' }}${{ github.event.inputs.DROID_SPACES== 'true' && '_DS' || '' }}${{ github.event.inputs.RE_KERNEL == 'true' && '_REKER' || '' }}" >> $GITHUB_OUTPUT
       
       - name: 压缩 AnyKernel3
-        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建'
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '构建全部机型'
         id: compress
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
@@ -1824,7 +1824,7 @@ jobs:
           cd ../
 
       - name: 上传已压缩的 AnyKernel3
-        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '矩阵构建'
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET == '构建全部机型'
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
         uses: actions/upload-artifact@v7
@@ -1833,7 +1833,7 @@ jobs:
           path: ${{ steps.compress.outputs.ak3name }}
 
       - name: 上传为压缩的 AnyKernel3 (方式2)
-        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET != '矩阵构建'
+        if: steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_TARGET != '构建全部机型'
         env:
           KSU_NAME: ${{ github.event.inputs.KERNELSU_BRANCH }}
         uses: actions/upload-artifact@v7
@@ -2010,7 +2010,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs: 
       upload_success: ${{ steps.upload_release.outputs.upload_success }}
-    if: ${{ github.event.inputs.BUILD_TARGET == '矩阵构建' && github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' || needs.build.result == 'skipped' && !cancelled() }}
+    if: ${{ github.event.inputs.BUILD_TARGET == '构建全部机型' && github.event.inputs.RELEASE_TYPE != 'None' && needs.build.result == 'success' || needs.build.result == 'skipped' && !cancelled() }}
     steps:
       - name: 检出仓库代码
         uses: actions/checkout@v7
