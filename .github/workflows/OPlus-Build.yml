@@ -214,13 +214,17 @@ jobs:
         id: set-matrix
         run: |
           if ${{ github.event.inputs.BUILD_TARGET == 'ColorOS15 - All' }}; then
-            DEVICES_LIST=".matrix/devices_15.txt"
+            DEVICES_LIST=".matrix/devices_15.txt" >> $GITHUB_OUTPUT
+            BUILD_TARGET="Alldevices" >> $GITHUB_OUTPUT
           elif ${{ github.event.inputs.BUILD_TARGET == 'ColorOS16 - All' }}; then
-            DEVICES_LIST=".matrix/devices_16.txt"
+            DEVICES_LIST=".matrix/devices_16.txt" >> $GITHUB_OUTPUT
+            BUILD_TARGET="Alldevices" >> $GITHUB_OUTPUT
+          else
+            DEVICES_LIST=$(cat .matrix/latest_devices.txt) >> $GITHUB_OUTPUT
           fi
           [ -n $DEVICES_LIST ] && echo "$DEVICES_LIST"
           chmod 777 .matrix/general_matrix.sh
-          RAW="$(bash .matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" "$DEVICES_LIST" 
+          RAW="$(bash .matrix/general_matrix.sh "${{ steps.set-matrix.outputs.BUILD_TARGET }}" "${{ steps.set-matrix.outputs.DEVICES_LIST }}" 
           echo "RAW => $RAW"
           echo "matrix=$RAW" >> "$GITHUB_OUTPUT"
           echo "mode=matrix" >> "$GITHUB_OUTPUT"
