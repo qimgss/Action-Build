@@ -219,7 +219,7 @@ jobs:
             DEVICES_LIST=".matrix/devices_16.txt"
           fi
           chmod 777 .matrix/general_matrix.sh
-          RAW="$(bash .matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" ".matrix/$DEVICES_LIST")"
+          RAW="$(bash .matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" "$DEVICES_LIST")"
           echo "RAW => $RAW"
           echo "matrix=$RAW" >> "$GITHUB_OUTPUT"
           echo "mode=matrix" >> "$GITHUB_OUTPUT"
