@@ -241,7 +241,7 @@ jobs:
         run: |
           if ${{ steps.set-matrix.outputs.mode == 'matrix' }}; then
             BUILD_TARGET=$(echo "${{ env.BUILD_TARGET }}" | sed 's/ - .*//')
-            BUILD_MODE=$(echo $BUILD_TARGET | grep -o "All")
+            echo "BUILD_MODE=$(echo $BUILD_TARGET | grep -o All)" >> $GITHUB_ENV
           fi
 
           KSU_BRANCH="${{ env.KSU_BRANCH }}"
@@ -250,7 +250,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
-          if ${{ steps.set-matrix.outputs.mode == 'matrix' }} && ${{ $BUILD_MODE == "All" }}; then
+          if ${{ steps.set-matrix.outputs.mode == 'matrix' }} && ${{ env.BUILD_MODE == 'All' }}; then
             echo "| 构建目标 | $BUILD_TARGET 全机型 | 本次构建的目标 |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| 构建目标 | ${{ inputs.BUILD_TARGET }} | 本次构建的目标 |" >> $GITHUB_STEP_SUMMARY
