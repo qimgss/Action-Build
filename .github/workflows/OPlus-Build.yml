@@ -24,7 +24,8 @@ on:
         required: true
         default: 
         options:
-          - 构建全部机型
+          - ColorOS15 - All
+          - ColorOS16 - All
           - oneplus_nord_n30_se_5g_v
           - oneplus_10r_v
           - oneplus_nord_3_v
@@ -212,10 +213,16 @@ jobs:
       - name: Generate Matrix
         id: set-matrix
         run: |
+          if ${{ github.event.inputs.BUILD_TARGET == 'ColorOS15 - All' }}; then
+            DEVICES_LIST=".matrix/devices_15.txt"
+          elif ${{ github.event.inputs.BUILD_TARGET == 'ColorOS16 - All' }}; then
+            DEVICES_LIST=".matrix/devices_16.txt"
+          fi
           chmod 777 .matrix/general_matrix.sh
           RAW="$(bash .matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" ".matrix/devices.txt")"
           echo "RAW => $RAW"
           echo "matrix=$RAW" >> "$GITHUB_OUTPUT"
+          echo "mode=matrix" >> "$GITHUB_OUTPUT"
         shell: bash
 
   generate-summary:
@@ -230,19 +237,29 @@ jobs:
           LSM_BBG_STATUS: ${{ github.event.inputs.LSM_BBG == 'true' && '✅' || '❌' }}
           NETFILTER_STATUS: ${{ github.event.inputs.NETFILTER == 'true' && '✅' || '❌' }}
           CCM_STATUS: ${{ github.event.inputs.CCM == 'true' && '✅' || '❌' }}
+          BUILD_TARGET: ${{ github.event.inputs.BUILD_TARGET }}
         run: |
+          if ${{ steps.set-matrix.outputs.mode == 'matrix' }}; then
+            BUILD_TARGET=$(echo "${{ env.BUILD_TARGET }}" | sed 's/ - .*//')
+            BUILD_MODE=$(echo $BUILD_TARGET | grep -o "All")
+          fi
+
           KSU_BRANCH="${{ env.KSU_BRANCH }}"
           Is_DEV_SUSFS="${{ env.Is_DEV_SUSFS }}"
           echo "### 构建摘要" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 构建目标 | ${{ inputs.BUILD_TARGET }} | 本次构建的目标 |" >> $GITHUB_STEP_SUMMARY
+          if ${{ steps.set-matrix.outputs.mode == 'matrix' }} && ${{ $BUILD_MODE == "All" }}; then
+            echo "| 构建目标 | $BUILD_TARGET 全机型 | 本次构建的目标 |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 构建目标 | ${{ inputs.BUILD_TARGET }} | 本次构建的目标 |" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "| Release发布形式  | ${{ inputs.RELEASE_TYPE }} | 发布到Release的形式(或不) |" >> $GITHUB_STEP_SUMMARY
           echo "| KernelSU分支 | ${{ inputs.KERNELSU_BRANCH }} | KernelSU的分支 |" >> $GITHUB_STEP_SUMMARY
           echo "| KPM实现方式 | ${{ inputs.KPM }} | KPM实现方式 |" >> $GITHUB_STEP_SUMMARY
           echo "| Droid-Space | ${{ env.DROID_SPACE_STATUS }} | 轻量级Linux容器 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Re-Kernel | ${{ env.REKERNEL_STATUS }} | Re-Kernel |"
+          echo "| Re-Kernel | ${{ env.REKERNEL_STATUS }} | Re-Kernel |" >> $GITHUB_STEP_SUMMARY
           echo "| BBR+ECN | ${{ env.CCM_STATUS }} | 网络拥塞控制与管理机制 |" >> $GITHUB_STEP_SUMMARY
           echo "| 网络功能拓展 | ${{ env.NETFILTER_STATUS }} | 网络功能拓展 |" >> $GITHUB_STEP_SUMMARY
           echo "| BBG分区保护 | ${{ env.LSM_BBG_STATUS }} | BBG分区保护 |" >> $GITHUB_STEP_SUMMARY
