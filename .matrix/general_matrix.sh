@@ -8,7 +8,7 @@ BUILD_TARGET="$INPUTS"
 TARGET=$(echo "$BUILD_TARGET" | grep -o "ColorOS")
 
 # ===== 矩阵构建 =====
-if [ "$ARGET" = "ColorOS" ]; then
+if [ "$TARGET" = "ColorOS" ]; then
   if [ -f "$DEVICE_FILE" ]; then
     DEVICES=$(grep -v '^$' "$DEVICE_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   else
