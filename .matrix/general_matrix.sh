@@ -4,8 +4,10 @@ set -euo pipefail
 INPUT="$1"
 DEVICE_FILE="${2:-}"
 
+BUILD_TARGET=$(echo "${{ env.BUILD_TARGET }}" | sed 's/ - .*//' | grep -o "ColorOS")
+
 # ===== 矩阵构建 =====
-if [ "$INPUT" = "构建全部机型" ]; then
+if [ "$BUILD_TARGET" = "ColorOS" ]; then
   if [ -f "$DEVICE_FILE" ]; then
     DEVICES=$(grep -v '^$' "$DEVICE_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   else
