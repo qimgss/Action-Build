@@ -224,7 +224,7 @@ jobs:
           fi
           [ -n $DEVICES_LIST ] && echo "$DEVICES_LIST"
           chmod 777 .matrix/general_matrix.sh
-          RAW="$(bash .matrix/general_matrix.sh "${BUILD_TARGET}" "${DEVICES_LIST}")""
+          RAW="$(bash .matrix/general_matrix.sh "${BUILD_TARGET}" "${DEVICES_LIST}")"
           echo "RAW => $RAW"
           echo "matrix=$RAW" >> "$GITHUB_OUTPUT"
         shell: bash
