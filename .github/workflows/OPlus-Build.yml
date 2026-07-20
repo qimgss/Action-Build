@@ -218,6 +218,7 @@ jobs:
           elif ${{ github.event.inputs.BUILD_TARGET == 'ColorOS16 - All' }}; then
             DEVICES_LIST=".matrix/devices_16.txt"
           fi
+          [ -n $DEVICES_LIST ] && echo "$DEVICES_LIST"
           chmod 777 .matrix/general_matrix.sh
           RAW="$(bash .matrix/general_matrix.sh "${{ github.event.inputs.BUILD_TARGET }}" "$DEVICES_LIST" 
           echo "RAW => $RAW"
