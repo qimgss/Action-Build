@@ -246,7 +246,9 @@ jobs:
         run: |
           if ${{ steps.set-matrix.outputs.mode == 'matrix' }}; then
             BUILD_TARGET=$(echo "${{ env.BUILD_TARGET }}" | sed 's/ - .*//' | grep -o "ColorOS")
-            [ $BUILD_TARGET = "ColorOS" ] && BUILD_MODE="All"
+            if [ -n "$BUILD_TARGET" ] && [ "$BUILD_TARGET" = "ColorOS" ]; then
+              BUILD_MODE="All"
+            fi
           fi
 
           KSU_BRANCH="${{ env.KSU_BRANCH }}"
