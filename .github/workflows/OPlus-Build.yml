@@ -215,8 +215,6 @@ jobs:
           elif ${{ github.event.inputs.BUILD_TARGET == 'ColorOS16 - All' }}; then
             DEVICES_LIST=".matrix/devices_16.txt" >> $GITHUB_OUTPUT
             BUILD_TARGET="Alldevices" >> $GITHUB_OUTPUT
-          else
-            DEVICES_LIST=$(cat .matrix/latest_devices.txt) >> $GITHUB_OUTPUT
           fi
           [ -n $DEVICES_LIST ] && echo "$DEVICES_LIST"
           chmod 777 .matrix/general_matrix.sh
