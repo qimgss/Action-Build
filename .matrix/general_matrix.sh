@@ -5,7 +5,7 @@ INPUT="$1"
 DEVICE_FILE="${2:-}"
 
 # ===== 矩阵构建 =====
-if [ "$INPUT" = "Alldevices" ]; then
+if [ -n "$INPUT" ]; then
   if [ -f "$DEVICE_FILE" ]; then
     DEVICES=$(grep -v '^$' "$DEVICE_FILE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   else
