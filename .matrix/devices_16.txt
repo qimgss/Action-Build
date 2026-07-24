@@ -25,3 +25,4 @@
           oneplus_pad_3_b(SCHED)
           oneplus_pad2_mt6991_b(SCHED)
           oneplus_turbo_6(SCHED)
+          oneplus_ace6_ultra

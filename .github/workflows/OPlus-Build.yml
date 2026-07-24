@@ -71,16 +71,12 @@ on:
           - oneplus_ace_6
           - oneplus_turbo_6
           - oneplus_ace_6t
-          - oneplus_ace_6t_Canary
           - oneplus_15r
-          - oneplus_15r_Canary
           - oneplus_15
-          - oneplus_15_Canary
           - oneplus_15t
-          - oneplus_15t_Canary
           - oneus_pad_3_pro
-          - oneplus_pad_3_pro_Canary
           - oneplus_pad_4
+          - oneplus_ace6_ultra
       KERNELSU_BRANCH:
         type: choice
         description: "KernelSU分支"
