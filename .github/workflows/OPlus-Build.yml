@@ -218,9 +218,7 @@ jobs:
           elif [ $TARGET_DEVICES == "ColorOS16 - All" ]; then
             echo "matrix=$(cat .matrix/16.json)" >> "$GITHUB_OUTPUT"
             echo "version=16" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [ -z $version ]; then
+          else
             echo "matrix={\"include\":[{\"file\":\"$TARGET_DEVICES\",\"sched_hmbird\":\"false\"}]}" >> "$GITHUB_OUTPUT"
           fi
         shell: bash
