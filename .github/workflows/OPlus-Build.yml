@@ -214,7 +214,7 @@ jobs:
             echo "matrix=$(cat .matrix/16.json)" >> "$GITHUB_OUTPUT"
             echo "version=16" >> "$GITHUB_OUTPUT"
           else
-            echo "{\"include\":[{\"file\":\"$TARGET_DEVICES\",\"sched_hmbird\":\"false\"}]}"
+            echo "matrix={\"include\":[{\"file\":\"$TARGET_DEVICES\",\"sched_hmbird\":\"false\"}]}" >> "$GITHUB_OUTPUT"
           fi
         shell: bash
 
