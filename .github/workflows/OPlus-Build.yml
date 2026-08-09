@@ -215,7 +215,7 @@ jobs:
             echo "version=16" >> "$GITHUB_OUTPUT"
           else
             echo "{\"include\":[{\"file\":\"$TARGET_DEVICES\",\"sched_hmbird\":\"false\"}]}"
-          fis
+          fi
         shell: bash
 
   generate-summary:
