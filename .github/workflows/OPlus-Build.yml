@@ -193,6 +193,11 @@ on:
         description: "是否停用此次Ccache？"
         required: true
         default: false
+      SKIP_612:
+        type: boolean
+        description: "是否跳过6.12内核的构建？"
+        required: false
+        default: false
 
 jobs:
   prepare-matrix:
@@ -210,7 +215,7 @@ jobs:
           if [ $TARGET_DEVICES == "ColorOS15 - All" ]; then
             echo "matrix=$(cat .matrix/15.json)" >> "$GITHUB_OUTPUT"
             echo "version=15" >> "$GITHUB_OUTPUT"
-          elif [ $TARGET_DEVICES == "ColorOS16 - All" ]
+          elif [ $TARGET_DEVICES == "ColorOS16 - All" ]; then
             echo "matrix=$(cat .matrix/16.json)" >> "$GITHUB_OUTPUT"
             echo "version=16" >> "$GITHUB_OUTPUT"
           fi
@@ -697,7 +702,7 @@ jobs:
 
       - name: 检查内核兼容性并跳过构建
         id: check_kernel_skip
-        if: ${{ github.event.inputs.KERNELSU_BRANCH == 'KernelSU' || github.event.inputs.KERNELSU_BRANCH == 'SukiSU-Ultra' }}
+        if: ${{ github.event.inputs.SKIP_612 == 'true' }}
         run: |
           # 解析内核主次版本
           # 6.12及以上内核不支持KernelSU主分支
