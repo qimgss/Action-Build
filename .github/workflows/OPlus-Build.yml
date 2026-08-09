@@ -203,27 +203,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
       - name: Generate Matrix
         id: set-matrix
         run: |
-          if ${{ github.event.inputs.BUILD_TARGET == 'ColorOS15 - All' }}; then
-            DEVICES_LIST=".matrix/devices_15.txt" >> $GITHUB_OUTPUT
-            BUILD_TARGET="Alldevices" >> $GITHUB_OUTPUT
-          elif ${{ github.event.inputs.BUILD_TARGET == 'ColorOS16 - All' }}; then
-            DEVICES_LIST=".matrix/devices_16.txt" >> $GITHUB_OUTPUT
-            BUILD_TARGET="Alldevices" >> $GITHUB_OUTPUT
-          fi
-          [ -n $DEVICES_LIST ] && echo "$DEVICES_LIST"
-          chmod 777 .matrix/general_matrix.sh
-          RAW="$(bash .matrix/general_matrix.sh "${BUILD_TARGET}" "${DEVICES_LIST}")"
-          echo "RAW => $RAW"
-          echo "matrix=$RAW" >> "$GITHUB_OUTPUT"
+          TARGET_DEVICES="${{ github.event.inputs.BUILD_TARGET }}"
+          if [ $TARGET_DEVICES == "ColorOS15 - All" ]; then
+            echo "matrix=$(cat .matrix/15.json)" >> "$GITHUB_OUTPUT"
+            echo "version=15" >> "$GITHUB_OUTPUT"
+          elif [ $TARGET_DEVICES == "ColorOS16 - All" ]
+            echo "matrix=$(cat .matrix/16.json)" >> "$GITHUB_OUTPUT"
+            echo "version=16" >> "$GITHUB_OUTPUT"
+          else
+            echo "{\"include\":[{\"file\":\"$TARGET_DEVICES\",\"sched_hmbird\":\"false\"}]}"
+          fis
         shell: bash
 
   generate-summary:
+    needs: prepare-matrix
     runs-on: ubuntu-latest
     steps:
       - name: Generate Summary
@@ -237,11 +233,11 @@ jobs:
           CCM_STATUS: ${{ github.event.inputs.CCM == 'true' && '✅' || '❌' }}
           BUILD_TARGET: ${{ github.event.inputs.BUILD_TARGET }}
         run: |
-          if ${{ steps.set-matrix.outputs.mode == 'matrix' }}; then
-            BUILD_TARGET=$(echo "${{ env.BUILD_TARGET }}" | sed 's/ - .*//' | grep -o "ColorOS")
-            if [ -n "$BUILD_TARGET" ] && [ "$BUILD_TARGET" = "ColorOS" ]; then
-              BUILD_MODE="All"
-            fi
+          version=${{ needs.prepare-matrix.outputs.version }}
+          if [ -n $version]; then
+            BUILD_TARGET="ColorOS$version 全机型"
+          else
+            BUILD_TARGET="${{ env.BUILD_TARGET }}"
           fi
 
           KSU_BRANCH="${{ env.KSU_BRANCH }}"
@@ -250,11 +246,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| 选项 | 状态 | 描述 |" >> $GITHUB_STEP_SUMMARY
           echo "|------------|------------|------------|" >> $GITHUB_STEP_SUMMARY
-          if [ $BUILD_MODE = "All" ]; then
-            echo "| 构建目标 | $BUILD_TARGET 全机型 | 本次构建的目标 |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 构建目标 | ${{ inputs.BUILD_TARGET }} | 本次构建的目标 |" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "| 构建目标 | $BUILD_TARGET | 本次构建的目标 |" 》》 $GIUTHUB_STEP_SUMMMARY
           echo "| Release发布形式  | ${{ inputs.RELEASE_TYPE }} | 发布到Release的形式(或不) |" >> $GITHUB_STEP_SUMMARY
           echo "| KernelSU分支 | ${{ inputs.KERNELSU_BRANCH }} | KernelSU的分支 |" >> $GITHUB_STEP_SUMMARY
           echo "| KPM实现方式 | ${{ inputs.KPM }} | KPM实现方式 |" >> $GITHUB_STEP_SUMMARY
