@@ -24,8 +24,8 @@ on:
         required: true
         default: 
         options:
-          - ColorOS15 - All
-          - ColorOS16 - All
+          - ColorOS15全机型
+          - ColorOS16全机型
           - oneplus_nord_n30_se_5g_v
           - oneplus_10r_v
           - oneplus_nord_3_v
@@ -213,11 +213,11 @@ jobs:
         run: |
           TARGET_DEVICES="${{ github.event.inputs.BUILD_TARGET }}"
           echo "$TARGET_DDEVICES"
-          if [ $TARGET_DEVICES == 'ColorOS15-All' ]; then
+          if [ $TARGET_DEVICES == 'ColorOS15全机型' ]; then
             echo "ColorOS15全机型构建"
             echo "matrix=$(cat .matrix/15.json)" >> "$GITHUB_OUTPUT"
             echo "version=15" >> "$GITHUB_OUTPUT"
-          elif [ $TARGET_DEVICES == 'ColorOS16- ll' ]; then
+          elif [ $TARGET_DEVICES == 'ColorOS16全机型' ]; then
             echo "ColorOS16全机型构建"
             echo "matrix=$(cat .matrix/16.json)" >> "$GITHUB_OUTPUT"
             echo "version=16" >> "$GITHUB_OUTPUT"
