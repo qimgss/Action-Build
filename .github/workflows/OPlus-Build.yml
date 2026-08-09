@@ -212,11 +212,12 @@ jobs:
         id: set-matrix
         run: |
           TARGET_DEVICES="${{ github.event.inputs.BUILD_TARGET }}"
-          if [ $TARGET_DEVICES == 'ColorOS15 - All' ]; then
+          echo "$TARGET_DDEVICES"
+          if [ $TARGET_DEVICES == 'ColorOS15-All' ]; then
             echo "ColorOS15全机型构建"
             echo "matrix=$(cat .matrix/15.json)" >> "$GITHUB_OUTPUT"
             echo "version=15" >> "$GITHUB_OUTPUT"
-          elif [ $TARGET_DEVICES == 'ColorOS16 - All' ]; then
+          elif [ $TARGET_DEVICES == 'ColorOS16- ll' ]; then
             echo "ColorOS16全机型构建"
             echo "matrix=$(cat .matrix/16.json)" >> "$GITHUB_OUTPUT"
             echo "version=16" >> "$GITHUB_OUTPUT"
