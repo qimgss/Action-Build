@@ -87,6 +87,7 @@ on:
           - KernelSU-Next
           - SukiSU-Ultra
           - ReSukiSU
+          - NanSU
       RELEASE_TYPE:
         type: choice
         description: "Release发布形式"
@@ -992,6 +993,21 @@ jobs:
 
           KSU_VERSION=$(expr $(git rev-list --count "$MANAGER_BRANCH" 2>/dev/null || echo 13000) + 30700)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+
+      - name: 添加NanSU
+        id: add_nsu
+        if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.KERNELSU_BRANCH == 'NanSU' }}
+        run: |
+          cd kernel_workspace/kernel_platform
+          MANAGER_BRANCH="${{ steps.manager.outputs.manager_branch }}"
+          curl -LSs "https://raw.githubusercontent.com/Guxin12/NANSU/refs/heads/builtin/kernel/setup.sh" | bash -s main
+          cd KernelSU
+          KSU_VERSION=$(expr $(curl -sI "https://api.github.com/repos/Guxin12/NANSU/commits?sha=${MANAGER_BRANCH}&per_page=1" | grep -i "link:" | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p') "+" 30000)
+          echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+          echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
+          echo "KSU_BRANCH_VERSION=${{ env.KSU_BRANCH }}-${{ env.KSUVER }}" >> $GITHUB_OUTPUT
+          sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Kbuild
+          echo "KSU_BRANCH_VERSION=KernelSU-$KSU_VERSION" >> $GITHUB_OUTPUT
 
       - name: 应用KernelSU补丁
         if: steps.check_kernel_skip.outputs.skip != 'true'
