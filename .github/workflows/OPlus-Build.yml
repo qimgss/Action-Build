@@ -828,7 +828,7 @@ jobs:
               ARTIFACT="manager"
               echo "KSU_REPO=Sukisu-Ultra/Sukisu-Ultra" >> "$GITHUB_OUTPUT"
               echo "KSU_BRANCH=SukiSU-Ultra" >> $GITHUB_OUTPUT
-             echo "KSU_BRANCH=SukiSU-Ultra" >> $GITHUB_ENV
+              echo "KSU_BRANCH=SukiSU-Ultra" >> $GITHUB_ENV
               ;;
             ReSukisu)
               BRANCH="main"
@@ -837,6 +837,12 @@ jobs:
               echo "KSU_BRANCH=ReSukiSU" >> $GITHUB_OUTPUT
               echo "KSU_BRANCH=ReSukiSU" >> $GITHUB_ENV
               ;;
+            NanSU)
+              BRANCH="main"
+              ARTIFACT="manager"
+              echo "KSU_REPO=Guxin12/NANSU" >> "$GITHUB_OUTPUT"
+              echo "KSU_BRANCH=NanSU" >> $GITHUB_OUTPUT
+              echo "KSU_BRANCH=NanSU" >> $GITHUB_ENV
           esac
 
           echo "manager_branch=$KSU_REPO" >> "$GITHUB_OUTPUT"
@@ -1800,8 +1806,8 @@ jobs:
           KPN_DIR="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/patches/kpn"
           OUT_DIR="${GITHUB_WORKSPACE}/kernel_workspace/kernel_platform/out/Final-Image-Find"
           cd "${OUT_DIR}"
-          if [ "${{ github.event.inputs.KPM }}" = "KPM" ] || [ "${{ github.event.inputs.KERNELSU_BRANCH }}" = "SukiSU-Ultra" ]; then
-            cp "${KPM_DIR}/patch_linux" .
+          if [ "${{ github.event.inputs.KPM }}" = "KPM" ] || [ "${{ github.event.inputs.KERNELSU_BRANCH }}" = "SukiSU-Ultra" ] || [ "${{ github.event.inputs.KERNELSU_BRANCH }}" = "NanSU" ]; then
+            cp ${KPM_DIR}/patch_linux .
             chmod +x patch_linux
             ./patch_linux
           else
@@ -2006,38 +2012,23 @@ jobs:
         id: get-ksu-manager
         continue-on-error: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KSU_REPO: ${{ needs.build.outputs.KSU_REPO }}
         run: |
-          MANAGER_BRANCH="${{ needs.build.outputs.manager_branch }}"
-          MANAGER_ARTIFACT="${{ needs.build.outputs.manager_artifact }}"
+          githubdl="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/lib/githubdl"
+          cd "${GITHUB_WORKSPACE}/kernel_workspace/Action-Build"
+          ksurepo=${{ env.KSU_REPO }}
+          $githubdl actions $ksurepo latest manager -o manager
+          unzip "./manager/manager.zip" -d manager && rm -rf ./manager/manager.zip
+          ksumgr=$(ls manager/*.apk)
+          ksumgr="${GITHUB_WORKSPACE}/kernel_workspace/Action-Build/$ksumgr"
+          echo "ksumgr=$ksumgr" > $GITHUB_OUTPUT
 
-          echo "Using branch: $MANAGER_BRANCH"
-          echo "Downloading artifact: $MANAGER_ARTIFACT"
-
-          run_id=$(gh api "repos/${{ env.KSU_REPO }}/actions/workflows/build-manager.yml/runs?branch=$MANAGER_BRANCH&status=success&per_page=1" --jq '.workflow_runs[0].id' || echo "")
-
-          if [[ -z "$run_id" ]]; then
-            echo "No successful workflow run found on branch $MANAGER_BRANCH. Skipping download."
-            exit 0
-          fi
-          artifact_url=$(gh api "repos/${{ env.KSU_REPO }}/actions/runs/$run_id/artifacts" | jq -r ".artifacts[] | select(.name == \"$MANAGER_ARTIFACT\") | .archive_download_url" | head -n1)
-
-          if [[ -z "$artifact_url" ]]; then
-            echo "No artifact '$MANAGER_ARTIFACT' found in run $run_id. Skipping download."
-            exit 0
-          fi
-          echo "Downloading from: $artifact_url"
-          curl -fL -H "Authorization: token $GITHUB_TOKEN" -o "${MANAGER_ARTIFACT}.zip" "$artifact_url"
-          unzip -j "${MANAGER_ARTIFACT}.zip" "*.apk" -d ./
-          echo "KERNELSU_APK=$(ls KernelSU*.apk 2>/dev/null)" >> $GITHUB_OUTPUT
-          
       - name: 上传 KernelSU APK
-        if: ${{ steps.get-ksu-manager.outputs.KERNELSU_APK != '' }}
+        if: ${{ steps.get-ksu-manager.outputs.ksumgr != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: KernelSU-Manager
-          path: ${{ steps.get-ksu-manager.outputs.KERNELSU_APK }}
+          path: ${{ steps.get-ksu-manager.outputs.ksumgr }}
 
   release:
     needs: build
