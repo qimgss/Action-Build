@@ -601,6 +601,7 @@ jobs:
         env:
           FILE: ${{ env.FILE }}
         run: |
+          mkdir kernel_workspace && cd kernel_workspace
           cd kernel_workspace
           mkdir -p .repo/manifests
           cp "$GITHUB_WORKSPACE/.repo/manifests_fallback/${FILE}.xml" ".repo/manifests/${FILE}.xml"
