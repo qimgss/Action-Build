@@ -570,7 +570,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ env.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.BUILD_METHOD == 'true' && 'alpha' || 'beta' }}-16.2
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ env.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.BUILD_METHOD == 'Make' && 'alpha' || 'beta' }}-16.2
 
       - name: 初始化Ccache
         if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
@@ -722,13 +722,11 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
           
-      # 自定义内核后缀
-      - name: 自定义内核后缀(如果设置)
-        if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.SUFFIX != '' }}
+      - name: 自定义内核后缀 (如果设置)
+        if: ${{ github.event.inputs.SUFFIX != '' && github.event.inputs.SUFFIX != '-1' }}
         run: |
-          cd kernel_workspace
+          cd kernel_workspace/kernel_platform
           SUFFIX="${{ github.event.inputs.SUFFIX }}"
-          KANDROID_VERSION="${{ env.KANDROID_VERSION }}"
           BUILD_METHOD="${{ github.event.inputs.BUILD_METHOD }}"
 
           for f in ./common/scripts/setlocalversion ./"$KERNEL_REPOS"/scripts/setlocalversion ./external/dtc/scripts/setlocalversion; do
@@ -744,8 +742,8 @@ jobs:
               sed -i "s|echo \"\${KERNELVERSION}.*scm_version}\"|echo \"\${KERNELVERSION}-${KANDROID_VERSION}-${SUFFIX}\"|" "$f"
             elif grep -q 'echo "\$res"' "$f"; then
               echo "Detected OLD setlocalversion format"
-              if [ "$BUILD_METHOD" = "Make" ]; then
-                echo "MAKE_BUILD enabled: using static res"
+              if [ "$BUILD_METHOD" = "true" ]; then
+                echo "BUILD_METHOD enabled: using static res"
                 sed -i "s/^res=.*/res=\"-${KANDROID_VERSION}-${SUFFIX}\"/" "$f"
               else
                 echo "Standard build: injecting suffix via cut/echo"
@@ -761,9 +759,6 @@ jobs:
             fi
             chmod +x "$f"
           done
-
-          git add -A
-          git commit -m "Custom suffix & removed -dirty"
 
       # 伪官方格式的随机后缀（仅在 SUFFIX 未设置时生效）*
       - name: 自定义内核随机后缀(如果为空)
@@ -1557,7 +1552,7 @@ jobs:
 
       - name: 使用 Make 构建内核
         if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_METHOD == 'MAKE' }}
-        id: fast_build
+        id: BUILD_METHOD
         run: |
           KERNEL_VERSION="${{ env.KERNEL_VERSION }}"
           cd kernel_workspace/kernel_platform
@@ -1606,8 +1601,8 @@ jobs:
 
           if [[ -z "$CLANG_VERSION" ]]; then
             echo "⚠️ 未能从 CLANG_PREBUILT_BIN 或 build.config.constants 获取到 Clang 版本，回退至官方构建脚本"
-            echo "Fallback_to_Bazel=true" >> "$GITHUB_OUTPUT"
-            echo "请考虑关闭 Make 构建并提交问题"
+            echo "fallback=true" >> "$GITHUB_OUTPUT"
+            echo "请考虑关闭 BUILD_METHOD 并提交问题"
             exit 0
           fi
 
@@ -1669,7 +1664,7 @@ jobs:
 
           # RUSTC 检测与 fallback
           if [[ "$ENABLE_RUST" == "true" ]]; then
-            RUSTC_BIN="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/$RUST_TOOLS_PREBUILT_NAME/rust/linux-x86/$RUSTC_VERSION/bin/rustc"
+            RUSTC_BIN="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/$RUST_TOOLS_PREBUILT_NAME/rust/linux-x86/$RUSTC_DIR_VERSION/bin/rustc"
             if [ ! -x "$RUSTC_BIN" ]; then
               RUSTC_BIN="$(which rustc 2>/dev/null)"
               [ -x "$RUSTC_BIN" ] && echo "⚠️ rustc fallback to PATH: $RUSTC_BIN"
@@ -1729,6 +1724,9 @@ jobs:
             KCPPFLAGS="$KCPPFLAGS"
           )
 
+          if [[ -n "${CONFIG_FAKE_DISABLE:-}" ]]; then
+            MAKE_ARGS+=(CONFIG_FAKE_DISABLE="$CONFIG_FAKE_DISABLE")
+          fi
           if [[ -n "$LD_WRAPPER" ]]; then
             MAKE_ARGS+=(LD="$LD_WRAPPER")
           else
@@ -1995,10 +1993,10 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16.8
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.BUILD_METHOD == 'Make' && 'alpha' || 'beta' }}-16.8
 
       - name: 保存 ThinLTO 缓存
-        if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.FAST_BUILD == 'true' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
+        if: ${{ steps.check_kernel_skip.outputs.skip != 'true' && github.event.inputs.BUILD_NOCACHE == 'false' && github.event.inputs.BUILD_METHOD == 'Make' && steps.cache_size_check.outputs.thinlto_save == 'true' && steps.restore-thinlto.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v5
         with:
           path: ${{ github.workspace }}/kernel_workspace/.thinlto-cache
