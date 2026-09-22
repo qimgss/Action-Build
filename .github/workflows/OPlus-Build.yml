@@ -2041,7 +2041,7 @@ jobs:
           path: ${{ steps.get-ksu-manager.outputs.ksumgr }}
 
   release:
-    needs: build
+    needs: [build, get-ksu-manager]
     runs-on: ubuntu-latest
     outputs: 
       upload_success: ${{ steps.upload_release.outputs.upload_success }}
